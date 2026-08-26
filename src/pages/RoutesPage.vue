@@ -6,6 +6,7 @@ import {
 } from "vue";
 
 import PeriodModal from "../components/PeriodModal.vue";
+import FilterCombobox from "../components/FilterCombobox.vue";
 
 import {
   getFilteredRoutes,
@@ -594,71 +595,29 @@ onMounted(async () => {
               </button>
             </div>
 
-            <div class="filter-combobox">
-                            <span class="filter-combobox__label">
-                                Номер маршрута
-                            </span>
+            <FilterCombobox
+                v-model="selectedNumber"
+                label="Номер маршрута"
+                placeholder="Выберите номер"
+                all-text="Все номера"
+                :options="numberOptions"
+                @change="loadRoutes" />
 
-              <select
-                  class="filter-combobox__button"
-                  v-model="selectedNumber"
-                  @change="loadRoutes">
-                <option value="">
-                  Все номера
-                </option>
+            <FilterCombobox
+                v-model="selectedStationFrom"
+                label="Станция отправления"
+                placeholder="Выберите станцию"
+                all-text="Все станции"
+                :options="stationOptions"
+                @change="loadRoutes" />
 
-                <option
-                    v-for="number in numberOptions"
-                    :key="number"
-                    :value="number">
-                  {{ number }}
-                </option>
-              </select>
-            </div>
-
-            <div class="filter-combobox">
-                            <span class="filter-combobox__label">
-                                Станция отправления
-                            </span>
-
-              <select
-                  class="filter-combobox__button"
-                  v-model="selectedStationFrom"
-                  @change="loadRoutes">
-                <option value="">
-                  Все станции
-                </option>
-
-                <option
-                    v-for="station in stationOptions"
-                    :key="station"
-                    :value="station">
-                  {{ station }}
-                </option>
-              </select>
-            </div>
-
-            <div class="filter-combobox">
-                            <span class="filter-combobox__label">
-                                Станция прибытия
-                            </span>
-
-              <select
-                  class="filter-combobox__button"
-                  v-model="selectedStationTo"
-                  @change="loadRoutes">
-                <option value="">
-                  Все станции
-                </option>
-
-                <option
-                    v-for="station in stationOptions"
-                    :key="`to-${station}`"
-                    :value="station">
-                  {{ station }}
-                </option>
-              </select>
-            </div>
+            <FilterCombobox
+                v-model="selectedStationTo"
+                label="Станция прибытия"
+                placeholder="Выберите станцию"
+                all-text="Все станции"
+                :options="stationOptions"
+                @change="loadRoutes" />
 
             <label class="toggle-field">
                             <span class="toggle-field__label">
