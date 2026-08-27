@@ -3846,3 +3846,39 @@ body
     flex: 1;
   }
 }
+
+.full-sum-header th {
+  width: auto;
+  min-width: 0;
+  height: 34px;
+  padding: 4px 6px;
+  vertical-align: middle;
+  background: #e7f0ff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* Суммарные показатели для каждой отдельной колонки. */
+.routes-table tbody .routes-total-row > th,
+.routes-table tbody .routes-total-row > td {
+  height: 42px;
+  color: #172033;
+  background: #e7f0ff;
+  font-weight: 700;
+}
+
+.routes-table tbody .routes-total-row:hover > th,
+.routes-table tbody .routes-total-row:hover > td {
+  background: #e7f0ff;
+}
+
+.routes-total-row__label {
+  min-width: calc(
+          var(--year-width) +
+          var(--month-width) +
+          var(--route-width)
+  );
+  text-align: center;
+}

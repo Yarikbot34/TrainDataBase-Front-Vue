@@ -6,7 +6,6 @@ import {
 } from "vue";
 
 import PeriodModal from "../components/PeriodModal.vue";
-import FilterCombobox from "../components/FilterCombobox.vue";
 
 import {
   getFilteredRoutes,
@@ -19,6 +18,99 @@ import {
 
 const routes = ref([]);
 const trains = ref([]);
+
+const EMPTY_SUMMARY = Object.freeze({
+  fullSum: 0,
+  casualSum: 0,
+  studentSum: 0,
+  fedBenefitSum: 0,
+  regBenefitSum: 0,
+  another: 0
+});
+
+function createEmptySummary() {
+  return {
+    ...EMPTY_SUMMARY
+  };
+}
+
+function setRoutesData(data) {
+  routes.value = sortRoutes(
+      Array.isArray(data?.routes)
+          ? data.routes
+          : []
+  );
+
+  routeTotals.value = {
+    summCount: {
+      ...EMPTY_SUMMARY,
+      ...(data?.summCount ?? {})
+    },
+    summPayment: {
+      ...EMPTY_SUMMARY,
+      ...(data?.summPayment ?? {})
+    },
+    averWayLength: {
+      ...EMPTY_SUMMARY,
+      ...(data?.averWayLength ?? {})
+    },
+    summPaymentBySubj: {
+      ...EMPTY_SUMMARY,
+      ...(data?.summPaymentBySubj ?? {})
+    }
+  };
+}
+
+async function loadRoutes() {
+  loading.value = true;
+  error.value = "";
+
+  try {
+    const data = hasActiveFilters.value
+        ? await getFilteredRoutes(
+            buildFilterRequest()
+        )
+        : await getRoutes();
+
+    /*
+     * Важно: теперь API возвращает не массив,
+     * а нормализованный объект с маршрутами
+     * и суммарными значениями.
+     */
+    setRoutesData(data);
+
+    showNotification(
+        `Данные загружены. Записей: ${routes.value.length}`
+    );
+  } catch (exception) {
+    console.error(
+        "Ошибка загрузки маршрутов:",
+        exception
+    );
+
+    error.value =
+        exception instanceof Error
+            ? exception.message
+            : "Не удалось загрузить маршруты.";
+
+    setRoutesData(null);
+
+    showNotification(
+        "Не удалось загрузить маршруты.",
+        "error"
+    );
+  } finally {
+    loading.value = false;
+    closeDetails();
+  }
+}
+
+const routeTotals = ref({
+  summCount: { ...EMPTY_SUMMARY },
+  summPayment: { ...EMPTY_SUMMARY },
+  averWayLength: { ...EMPTY_SUMMARY },
+  summPaymentBySubj: { ...EMPTY_SUMMARY }
+});
 
 const loading = ref(false);
 const trainsLoading = ref(false);
@@ -34,7 +126,6 @@ const selectedRoute = ref(null);
 const selectedRequestId = ref(0);
 
 const searchQuery = ref("");
-const showSummary = ref(true);
 
 const selectedNumber = ref("");
 const selectedStationFrom = ref("");
@@ -48,7 +139,7 @@ const notificationType = ref("success");
 
 let notificationTimer = null;
 
-const monthOptions = [
+const monthOptions = Object.freeze([
   { value: 1, label: "Январь" },
   { value: 2, label: "Февраль" },
   { value: 3, label: "Март" },
@@ -61,7 +152,7 @@ const monthOptions = [
   { value: 10, label: "Октябрь" },
   { value: 11, label: "Ноябрь" },
   { value: 12, label: "Декабрь" }
-];
+]);
 
 const filteredRoutes = computed(() => {
   const query = searchQuery.value
@@ -92,6 +183,21 @@ const hasActiveFilters = computed(() => {
   );
 });
 
+const periodButtonText = computed(() => {
+  if (selectedPeriod.value.length === 0) {
+    return "Весь период";
+  }
+
+  const monthCount = selectedPeriod.value.reduce(
+      (total, item) => {
+        return total + (item.months?.length ?? 0);
+      },
+      0
+  );
+
+  return `Выбрано месяцев: ${monthCount}`;
+});
+
 function toNumber(value) {
   const number = Number(value);
 
@@ -110,22 +216,8 @@ function formatYear(value) {
   return String(year);
 }
 
-const periodButtonText = computed(() => {
-  if (selectedPeriod.value.length === 0) {
-    return "Весь период";
-  }
-
-  const monthCount = selectedPeriod.value.reduce(
-      (total, item) => total + item.months.length,
-      0
-  );
-
-  return `Выбрано месяцев: ${monthCount}`;
-});
-
 function formatMonth(value) {
-  return String(toNumber(value))
-      .padStart(2, "0");
+  return String(toNumber(value)).padStart(2, "0");
 }
 
 function apiYear(value) {
@@ -156,12 +248,38 @@ function formatMoney(value) {
   }).format(toNumber(value));
 }
 
+function formatMetricValue(metric, value) {
+  if (metric.formatter === "integer") {
+    return formatInteger(value);
+  }
+
+  if (metric.formatter === "money") {
+    return formatMoney(value);
+  }
+
+  return formatDecimal(value);
+}
+
 function formatTime(value) {
   if (!value) {
     return "—";
   }
 
   return String(value).slice(0, 5);
+}
+
+function getRouteMetric(route, categoryKey, metricKey) {
+  return route?.[categoryKey]?.[metricKey] ?? 0;
+}
+
+function getGroupFullSum(metric) {
+  return routeTotals.value?.[metric.summaryKey]
+      ?.fullSum ?? 0;
+}
+
+function getCategoryTotal(metric, category) {
+  return routeTotals.value?.[metric.summaryKey]
+      ?.[category.totalKey] ?? 0;
 }
 
 function extractItems(payload) {
@@ -186,68 +304,6 @@ function extractItems(payload) {
   }
 
   return [];
-}
-
-function getCategory(route, categoryName) {
-  const category = route?.[categoryName];
-
-  return {
-    count: category?.count ?? 0,
-    payment: category?.payment ?? 0,
-    wayLength: category?.wayLength ?? 0,
-    paymentBySubject: category?.paymentBySubject ?? 0
-  };
-}
-
-function getStationName(station) {
-  if (!station) {
-    return null;
-  }
-
-  if (typeof station === "string") {
-    return station;
-  }
-
-  return station.name ??
-      station.stationName ??
-      station.title ??
-      station.fullName ??
-      null;
-}
-
-function formatStations(train) {
-  const from = getStationName(train.stationFrom);
-  const middle = getStationName(train.stationMiddle);
-  const to = getStationName(train.stationTo);
-
-  if (from && middle && to) {
-    return `${from} — ${middle} — ${to}`;
-  }
-
-  if (from && to) {
-    return `${from} — ${to}`;
-  }
-
-  if (from) {
-    return `${from} — станция назначения не указана`;
-  }
-
-  if (to) {
-    return `Станция отправления не указана — ${to}`;
-  }
-
-  return "Станции не указаны";
-}
-
-function formatTrainTimes(train) {
-  const from = formatTime(train.timeFrom);
-  const to = formatTime(train.timeTo);
-
-  if (from === "—" && to === "—") {
-    return "Время не указано";
-  }
-
-  return `${from} — ${to}`;
 }
 
 function sortRoutes(items) {
@@ -283,12 +339,13 @@ function sortRoutes(items) {
 
 function buildFilterRequest() {
   return {
-    period: selectedPeriod.value.length > 0
-        ? selectedPeriod.value.map((item) => ({
-          year: Number(item.year),
-          months: [...item.months]
-        }))
-        : null,
+    period:
+        selectedPeriod.value.length > 0
+            ? selectedPeriod.value.map((item) => ({
+              year: Number(item.year),
+              months: [...item.months]
+            }))
+            : null,
 
     number: selectedNumber.value
         ? String(selectedNumber.value)
@@ -304,7 +361,10 @@ function buildFilterRequest() {
   };
 }
 
-function showNotification(message, type = "success") {
+function showNotification(
+    message,
+    type = "success"
+) {
   notification.value = message;
   notificationType.value = type;
 
@@ -320,46 +380,6 @@ function applyPeriod(period) {
   loadRoutes();
 }
 
-function clearPeriod() {
-  selectedPeriod.value = [];
-}
-
-async function loadRoutes() {
-  loading.value = true;
-  error.value = "";
-
-  try {
-    const payload = hasActiveFilters.value
-        ? await getFilteredRoutes(buildFilterRequest())
-        : await getRoutes();
-
-    routes.value = sortRoutes(
-        extractItems(payload)
-    );
-
-    showNotification(
-        `Данные загружены. Записей: ${routes.value.length}`
-    );
-  } catch (exception) {
-    console.error(
-        "Ошибка загрузки маршрутов:",
-        exception
-    );
-
-    error.value = exception instanceof Error
-        ? exception.message
-        : "Не удалось загрузить маршруты.";
-
-    showNotification(
-        "Не удалось загрузить маршруты.",
-        "error"
-    );
-  } finally {
-    loading.value = false;
-    closeDetails();
-  }
-}
-
 async function loadFilterOptions() {
   try {
     const [
@@ -372,20 +392,14 @@ async function loadFilterOptions() {
       getWrittenPeriods()
     ]);
 
-    numberOptions.value = extractItems(
-        numbersPayload
-    );
+    numberOptions.value =
+        extractItems(numbersPayload);
 
-    stationOptions.value = extractItems(
-        stationsPayload
-    );
+    stationOptions.value =
+        extractItems(stationsPayload);
 
-    availablePeriods.value = periodsPayload;
-
-    console.log(
-        "Периоды, полученные от API:",
-        periodsPayload
-    );
+    availablePeriods.value =
+        normalizePeriods(periodsPayload);
   } catch (exception) {
     console.error(
         "Ошибка загрузки фильтров:",
@@ -394,22 +408,6 @@ async function loadFilterOptions() {
 
     availablePeriods.value = [];
   }
-}
-
-
-function resetFilters() {
-  selectedNumber.value = "";
-  selectedStationFrom.value = "";
-  selectedStationTo.value = "";
-  selectedPeriod.value = [];
-  searchQuery.value = "";
-
-  loadRoutes();
-}
-
-function selectMonth(value) {
-  selectedMonth.value = value;
-  loadRoutes();
 }
 
 function normalizePeriods(payload) {
@@ -443,9 +441,80 @@ function normalizePeriods(payload) {
           months
         };
       })
-      .filter((item) =>
-          Number.isFinite(item.year)
-      );
+      .filter((item) => {
+        return Number.isFinite(item.year);
+      });
+}
+
+function resetFilters() {
+  selectedNumber.value = "";
+  selectedStationFrom.value = "";
+  selectedStationTo.value = "";
+  selectedPeriod.value = [];
+  searchQuery.value = "";
+
+  loadRoutes();
+}
+
+function getStationName(station) {
+  if (!station) {
+    return null;
+  }
+
+  if (typeof station === "string") {
+    return station;
+  }
+
+  return (
+      station.name ??
+      station.stationName ??
+      station.title ??
+      station.fullName ??
+      null
+  );
+}
+
+function formatStations(train) {
+  const from = getStationName(
+      train.stationFrom
+  );
+
+  const middle = getStationName(
+      train.stationMiddle
+  );
+
+  const to = getStationName(
+      train.stationTo
+  );
+
+  if (from && middle && to) {
+    return `${from} — ${middle} — ${to}`;
+  }
+
+  if (from && to) {
+    return `${from} — ${to}`;
+  }
+
+  if (from) {
+    return `${from} — станция назначения не указана`;
+  }
+
+  if (to) {
+    return `Станция отправления не указана — ${to}`;
+  }
+
+  return "Станции не указаны";
+}
+
+function formatTrainTimes(train) {
+  const from = formatTime(train.timeFrom);
+  const to = formatTime(train.timeTo);
+
+  if (from === "—" && to === "—") {
+    return "Время не указано";
+  }
+
+  return `${from} — ${to}`;
 }
 
 async function openDetails(route) {
@@ -453,7 +522,9 @@ async function openDetails(route) {
   trains.value = [];
   trainsError.value = "";
 
-  const requestId = ++selectedRequestId.value;
+  const requestId =
+      ++selectedRequestId.value;
+
   trainsLoading.value = true;
 
   try {
@@ -463,13 +534,17 @@ async function openDetails(route) {
         route.routeNumber
     );
 
-    if (requestId !== selectedRequestId.value) {
+    if (
+        requestId !== selectedRequestId.value
+    ) {
       return;
     }
 
     trains.value = extractItems(payload);
   } catch (exception) {
-    if (requestId !== selectedRequestId.value) {
+    if (
+        requestId !== selectedRequestId.value
+    ) {
       return;
     }
 
@@ -478,16 +553,19 @@ async function openDetails(route) {
         exception
     );
 
-    trainsError.value = exception instanceof Error
-        ? exception.message
-        : "Не удалось загрузить данные по поездам.";
+    trainsError.value =
+        exception instanceof Error
+            ? exception.message
+            : "Не удалось загрузить данные по поездам.";
 
     showNotification(
         "Не удалось загрузить данные по поездам.",
         "error"
     );
   } finally {
-    if (requestId === selectedRequestId.value) {
+    if (
+        requestId === selectedRequestId.value
+    ) {
       trainsLoading.value = false;
     }
   }
@@ -507,6 +585,64 @@ onMounted(async () => {
     loadRoutes()
   ]);
 });
+const categories = Object.freeze([
+  {
+    key: "casual",
+    totalKey: "casualSum",
+    label: "Без льгот"
+  },
+  {
+    key: "student",
+    totalKey: "studentSum",
+    label: "Обучающиеся"
+  },
+  {
+    key: "fedBenefit",
+    totalKey: "fedBenefitSum",
+    label: "Федеральные льготники"
+  },
+  {
+    key: "regBenefit",
+    totalKey: "regBenefitSum",
+    label: "Региональные льготники"
+  },
+  {
+    key: "another",
+    totalKey: "another",
+    label: "Иные пассажиры"
+  }
+]);
+
+const metricGroups = Object.freeze([
+  {
+    key: "count",
+    summaryKey: "summCount",
+    title:
+        "Количество перевезённых пассажиров, чел.",
+    formatter: "integer"
+  },
+  {
+    key: "wayLength",
+    summaryKey: "averWayLength",
+    title:
+        "Средняя дальность поездки, км",
+    formatter: "decimal"
+  },
+  {
+    key: "payment",
+    summaryKey: "summPayment",
+    title:
+        "Доходы от перевозки пассажиров, руб.",
+    formatter: "money"
+  },
+  {
+    key: "paymentBySubject",
+    summaryKey: "summPaymentBySubj",
+    title:
+        "Доходы от субъектов, установивших льготы, руб.",
+    formatter: "money"
+  }
+]);
 </script>
 
 <template>
@@ -522,7 +658,8 @@ onMounted(async () => {
         <h1>Просмотр маршрутов</h1>
 
         <p>
-          Сводные данные по перевозкам пассажиров и доходам
+          Сводные данные по перевозкам пассажиров
+          и доходам
         </p>
       </div>
 
@@ -532,21 +669,26 @@ onMounted(async () => {
           :disabled="loading"
           :class="{ 'is-loading': loading }"
           @click="loadRoutes">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
+        <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true">
           <path
               d="M17.65 6.35A7.95 7.95 0 0 0 12 4V1L7 6l5 5V7a5 5 0 1 1-4.9 6H5.02A7 7 0 1 0 17.65 6.35Z" />
         </svg>
 
         <span>
-                    {{ loading ? "Загрузка…" : "Обновить" }}
-                </span>
+          {{ loading ? "Загрузка…" : "Обновить" }}
+        </span>
       </button>
     </header>
 
-    <section class="workspace" :class="{ 'is-split': selectedRoute }">
+    <section
+        class="workspace"
+        :class="{ 'is-split': selectedRoute }">
       <div class="workspace__main">
         <div class="table-card">
-          <div class="table-card__toolbar routes-toolbar">
+          <div
+              class="table-card__toolbar routes-toolbar">
             <div>
               <h2>Маршруты</h2>
 
@@ -560,7 +702,9 @@ onMounted(async () => {
             </div>
 
             <label class="search-field">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
+              <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true">
                 <path
                     d="m21 19.6-4.7-4.7a7 7 0 1 0-1.4 1.4l4.7 4.7 1.4-1.4ZM5 10a5 5 0 1 1 10 0A5 5 0 0 1 5 10Z" />
               </svg>
@@ -573,220 +717,168 @@ onMounted(async () => {
           </div>
 
           <div class="filters-bar routes-filters">
-            <div class="filter-combobox period-filter">
-    <span class="filter-combobox__label">
-        Период
-    </span>
+            <div
+                class="filter-combobox period-filter">
+              <span class="filter-combobox__label">
+                Период
+              </span>
 
               <button
                   class="filter-combobox__button period-filter__button"
                   type="button"
                   @click="showPeriodModal = true">
-        <span class="filter-combobox__value">
-            {{ periodButtonText }}
-        </span>
+                <span class="filter-combobox__value">
+                  {{ periodButtonText }}
+                </span>
 
                 <svg
                     class="filter-combobox__caret"
                     viewBox="0 0 24 24"
                     aria-hidden="true">
-                  <path d="m7 9 5 5 5-5-1.4-1.4L12 11.2 8.4 7.6 7 9Z" />
+                  <path
+                      d="m7 9 5 5 5-5-1.4-1.4L12 11.2 8.4 7.6 7 9Z" />
                 </svg>
               </button>
             </div>
 
-            <FilterCombobox
-                v-model="selectedNumber"
-                label="Номер маршрута"
-                placeholder="Выберите номер"
-                all-text="Все номера"
-                :options="numberOptions"
-                @change="loadRoutes" />
+            <div class="filter-combobox">
+              <span class="filter-combobox__label">
+                Номер маршрута
+              </span>
 
-            <FilterCombobox
-                v-model="selectedStationFrom"
-                label="Станция отправления"
-                placeholder="Выберите станцию"
-                all-text="Все станции"
-                :options="stationOptions"
-                @change="loadRoutes" />
+              <select
+                  v-model="selectedNumber"
+                  class="filter-combobox__button"
+                  @change="loadRoutes">
+                <option value="">
+                  Все номера
+                </option>
 
-            <FilterCombobox
-                v-model="selectedStationTo"
-                label="Станция прибытия"
-                placeholder="Выберите станцию"
-                all-text="Все станции"
-                :options="stationOptions"
-                @change="loadRoutes" />
+                <option
+                    v-for="number in numberOptions"
+                    :key="number"
+                    :value="number">
+                  {{ number }}
+                </option>
+              </select>
+            </div>
 
-            <label class="toggle-field">
-                            <span class="toggle-field__label">
-                                Отобразить суммарные данные
-                            </span>
+            <div class="filter-combobox">
+              <span class="filter-combobox__label">
+                Станция отправления
+              </span>
 
-              <span class="toggle-switch">
-                                <input
-                                    v-model="showSummary"
-                                    type="checkbox" />
+              <select
+                  v-model="selectedStationFrom"
+                  class="filter-combobox__button"
+                  @change="loadRoutes">
+                <option value="">
+                  Все станции
+                </option>
 
-                                <span class="toggle-switch__track">
-                                    <span class="toggle-switch__thumb"></span>
-                                </span>
-                            </span>
-            </label>
+                <option
+                    v-for="station in stationOptions"
+                    :key="station"
+                    :value="station">
+                  {{ station }}
+                </option>
+              </select>
+            </div>
+
+            <div class="filter-combobox">
+              <span class="filter-combobox__label">
+                Станция прибытия
+              </span>
+
+              <select
+                  v-model="selectedStationTo"
+                  class="filter-combobox__button"
+                  @change="loadRoutes">
+                <option value="">
+                  Все станции
+                </option>
+
+                <option
+                    v-for="station in stationOptions"
+                    :key="`to-${station}`"
+                    :value="station">
+                  {{ station }}
+                </option>
+              </select>
+            </div>
 
             <button
                 class="filters-reset-button"
                 type="button"
-                :class="{ 'is-active': hasActiveFilters }"
+                :class="{
+                'is-active': hasActiveFilters
+              }"
                 @click="resetFilters">
               Сбросить фильтры
             </button>
           </div>
 
           <div class="table-container">
-            <table
-                class="routes-table"
-                :class="{ 'hide-summary': !showSummary }">
+            <table class="routes-table">
               <thead>
               <tr class="group-header">
                 <th
                     class="sticky-column sticky-column--year"
-                    rowspan="2">
+                    rowspan="3">
                   Год
                 </th>
 
                 <th
                     class="sticky-column sticky-column--month"
-                    rowspan="2">
+                    rowspan="3">
                   Месяц
                 </th>
 
                 <th
                     class="sticky-column sticky-column--route"
-                    rowspan="2">
-                  № поездов
+                    rowspan="3">
+                  № поезда
                   «туда-обратно»
                 </th>
 
                 <th
-                    class="summary-column"
-                    colspan="4">
-                  Суммарные данные
+                    v-for="metric in metricGroups"
+                    :key="metric.key"
+                    colspan="5">
+                  {{ metric.title }}
                 </th>
+              </tr>
 
-                <th colspan="5">
-                  Количество перевезённых
-                  пассажиров, чел.
-                </th>
-
-                <th colspan="5">
-                  Средняя дальность поездки, км
-                </th>
-
-                <th colspan="5">
-                  Доходы от перевозки
-                  пассажиров, руб.
-                </th>
-
-                <th colspan="4">
-                  Доходы от субъектов,
-                  установивших льготы, руб.
+              <!-- Отдельный класс вместо column-header -->
+              <tr class="full-sum-header">
+                <th
+                    v-for="metric in metricGroups"
+                    :key="`full-${metric.key}`"
+                    colspan="5">
+                  Итого:
+                  {{
+                    formatMetricValue(
+                        metric,
+                        getGroupFullSum(metric)
+                    )
+                  }}
                 </th>
               </tr>
 
               <tr class="column-header">
-                <th class="summary-column">
-                  <span>Общий объём</span>
-                </th>
-
-                <th class="summary-column">
-                  <span>Доход от пассажиров</span>
-                </th>
-
-                <th class="summary-column">
-                  <span>Средняя дальность</span>
-                </th>
-
-                <th class="summary-column">
-                  <span>Доход от субъектов</span>
-                </th>
-
-                <th>
-                  <span>Без льгот</span>
-                </th>
-
-                <th>
-                  <span>Обучающиеся</span>
-                </th>
-
-                <th>
-                  <span>Федеральные льготники</span>
-                </th>
-
-                <th>
-                  <span>Региональные льготники</span>
-                </th>
-
-                <th>
-                  <span>Иные пассажиры</span>
-                </th>
-
-                <th>
-                  <span>Без льгот</span>
-                </th>
-
-                <th>
-                  <span>Обучающиеся</span>
-                </th>
-
-                <th>
-                  <span>Федеральные льготники</span>
-                </th>
-
-                <th>
-                  <span>Региональные льготники</span>
-                </th>
-
-                <th>
-                  <span>Иные пассажиры</span>
-                </th>
-
-                <th>
-                  <span>Без льгот</span>
-                </th>
-
-                <th>
-                  <span>Обучающиеся</span>
-                </th>
-
-                <th>
-                  <span>Федеральные льготники</span>
-                </th>
-
-                <th>
-                  <span>Региональные льготники</span>
-                </th>
-
-                <th>
-                  <span>Иные пассажиры</span>
-                </th>
-
-                <th>
-                  <span>Обучающиеся</span>
-                </th>
-
-                <th>
-                  <span>Федеральные льготники</span>
-                </th>
-
-                <th>
-                  <span>Региональные льготники</span>
-                </th>
-
-                <th>
-                  <span>Иные пассажиры</span>
-                </th>
+                <template
+                    v-for="metric in metricGroups"
+                    :key="`categories-${metric.key}`">
+                  <th
+                      v-for="category in categories"
+                      :key="
+            `${metric.key}-${category.key}`
+          ">
+          <span>
+            {{ category.label }}
+          </span>
+                  </th>
+                </template>
               </tr>
               </thead>
 
@@ -794,7 +886,7 @@ onMounted(async () => {
               <tr v-if="loading">
                 <td
                     class="state-cell"
-                    colspan="26">
+                    colspan="23">
                   <div class="loading-state">
                     <span class="spinner"></span>
                     Загрузка маршрутов…
@@ -805,13 +897,13 @@ onMounted(async () => {
               <tr v-else-if="error">
                 <td
                     class="state-cell"
-                    colspan="26">
+                    colspan="23">
                   <div class="error-state">
-                    <strong>Ошибка загрузки</strong>
+                    <strong>
+                      Ошибка загрузки
+                    </strong>
 
-                    <span>
-                                                {{ error }}
-                                            </span>
+                    <span>{{ error }}</span>
 
                     <button
                         type="button"
@@ -824,176 +916,122 @@ onMounted(async () => {
 
               <tr
                   v-else-if="
-                                        filteredRoutes.length === 0
-                                    ">
+        filteredRoutes.length === 0
+      ">
                 <td
                     class="state-cell"
-                    colspan="26">
+                    colspan="23">
                   Маршруты не найдены
                 </td>
               </tr>
 
-              <tr
-                  v-for="(route, index) in filteredRoutes"
-                  v-else
-                  :key="
-                                        route.id ??
-                                        `${route.year}-${route.month}-${route.routeNumber}-${index}`
-                                    ">
-                <td
-                    class="sticky-column sticky-column--year">
-                  {{ formatYear(route.year) }}
-                </td>
+              <template v-else>
+                <!--
+                  Суммарная строка находится перед маршрутами,
+                  поэтому её всегда видно сразу после заголовка.
+                -->
+                <tr class="routes-total-row">
+                  <th
+                      class="routes-total-row__label"
+                      colspan="3">
+                    Итого
+                  </th>
 
-                <td
-                    class="sticky-column sticky-column--month">
-                  {{ formatMonth(route.month) }}
-                </td>
+                  <template
+                      v-for="metric in metricGroups"
+                      :key="`total-${metric.key}`">
+                    <td
+                        v-for="category in categories"
+                        :key="
+              `total-${metric.key}-${category.key}`
+            "
+                        class="numeric-cell">
+                      {{
+                        formatMetricValue(
+                            metric,
+                            getCategoryTotal(
+                                metric,
+                                category
+                            )
+                        )
+                      }}
+                    </td>
+                  </template>
+                </tr>
 
-                <td
-                    class="sticky-column sticky-column--route route-cell">
-                  <button
-                      class="route-link"
-                      type="button"
-                      title="
-                                                Открыть данные по поездам
-                                            "
-                      @click="openDetails(route)">
-                    {{
-                      route.routeNumber ??
-                      route.number ??
-                      "—"
-                    }}
-                  </button>
-                </td>
-
-                <template
-                    v-for="
-                                            category in [
-                                                'summary'
-                                            ]"
-                    :key="category">
-                  <td class="numeric-cell summary-column">
-                    {{
-                      formatInteger(
-                          getCategory(route, category).count
-                      )
-                    }}
+                <tr
+                    v-for="(route, index) in filteredRoutes"
+                    :key="
+          route.id ??
+          `${route.year}-${route.month}-${route.routeNumber}-${index}`
+        ">
+                  <td
+                      class="sticky-column sticky-column--year">
+                    {{ formatYear(route.year) }}
                   </td>
 
-                  <td class="numeric-cell summary-column">
-                    {{
-                      formatMoney(
-                          getCategory(route, category).payment
-                      )
-                    }}
+                  <td
+                      class="sticky-column sticky-column--month">
+                    {{ formatMonth(route.month) }}
                   </td>
 
-                  <td class="numeric-cell summary-column">
-                    {{
-                      formatDecimal(
-                          getCategory(route, category).wayLength
-                      )
-                    }}
+                  <td
+                      class="
+            sticky-column
+            sticky-column--route
+            route-cell
+          ">
+                    <button
+                        class="route-link"
+                        type="button"
+                        title="Открыть данные по поездам"
+                        @click="openDetails(route)">
+                      {{
+                        route.routeNumber ??
+                        route.number ??
+                        "—"
+                      }}
+                    </button>
                   </td>
 
-                  <td class="numeric-cell summary-column">
-                    {{
-                      formatMoney(
-                          getCategory(route, category).paymentBySubject
-                      )
-                    }}
-                  </td>
-                </template>
-
-                <template
-                    v-for="
-                                            category in [
-                                                'casual',
-                                                'student',
-                                                'fedBenefit',
-                                                'regBenefit',
-                                                'another'
-                                            ]"
-                    :key="`count-${category}`">
-                  <td class="numeric-cell">
-                    {{
-                      formatInteger(
-                          getCategory(route, category).count
-                      )
-                    }}
-                  </td>
-                </template>
-
-                <template
-                    v-for="
-                                            category in [
-                                                'casual',
-                                                'student',
-                                                'fedBenefit',
-                                                'regBenefit',
-                                                'another'
-                                            ]"
-                    :key="`way-${category}`">
-                  <td class="numeric-cell">
-                    {{
-                      formatDecimal(
-                          getCategory(route, category).wayLength
-                      )
-                    }}
-                  </td>
-                </template>
-
-                <template
-                    v-for="
-                                            category in [
-                                                'casual',
-                                                'student',
-                                                'fedBenefit',
-                                                'regBenefit',
-                                                'another'
-                                            ]"
-                    :key="`payment-${category}`">
-                  <td class="numeric-cell">
-                    {{
-                      formatMoney(
-                          getCategory(route, category).payment
-                      )
-                    }}
-                  </td>
-                </template>
-
-                <template
-                    v-for="
-                                            category in [
-                                                'student',
-                                                'fedBenefit',
-                                                'regBenefit',
-                                                'another'
-                                            ]"
-                    :key="`subject-${category}`">
-                  <td class="numeric-cell">
-                    {{
-                      formatMoney(
-                          getCategory(route, category).paymentBySubject
-                      )
-                    }}
-                  </td>
-                </template>
-              </tr>
+                  <template
+                      v-for="metric in metricGroups"
+                      :key="
+            `route-${index}-${metric.key}`
+          ">
+                    <td
+                        v-for="category in categories"
+                        :key="
+              `${index}-${metric.key}-${category.key}`
+            "
+                        class="numeric-cell">
+                      {{
+                        formatMetricValue(
+                            metric,
+                            getRouteMetric(
+                                route,
+                                category.key,
+                                metric.key
+                            )
+                        )
+                      }}
+                    </td>
+                  </template>
+                </tr>
+              </template>
               </tbody>
             </table>
           </div>
 
           <div class="table-information">
-            <span class="table-information__accent"></span>
+            <span
+                class="table-information__accent">
+            </span>
 
             <span>
-                            Для просмотра всех столбцов используйте
-                            горизонтальную прокрутку.
-                            Нажмите на номер маршрута, чтобы открыть
-                            список поездов.
-                        </span>
+              Для просмотра поездов нажмите на номер
+              маршрута.
+            </span>
           </div>
         </div>
       </div>
@@ -1001,15 +1039,14 @@ onMounted(async () => {
       <aside class="workspace__details">
         <div class="details-panel__header">
           <div>
-                        <span class="details-panel__caption">
-                            Данные по поездам
-                        </span>
+            <span class="details-panel__caption">
+              Данные по поездам
+            </span>
 
             <h2>
               {{
                 selectedRoute
-                    ? `Поезда маршрута ${selectedRoute.routeNumber}
-                                       за ${formatMonth(selectedRoute.month)}.${formatYear(selectedRoute.year)}`
+                    ? `Поезда маршрута ${selectedRoute.routeNumber} за ${formatMonth(selectedRoute.month)}.${formatYear(selectedRoute.year)}`
                     : "Поезда не выбраны"
               }}
             </h2>
@@ -1018,7 +1055,7 @@ onMounted(async () => {
               {{
                 selectedRoute
                     ? `Найдено поездов: ${trains.length}`
-                    : "Выберите номер маршрута в верхней таблице"
+                    : "Выберите номер маршрута в таблице"
               }}
             </p>
           </div>
@@ -1037,29 +1074,37 @@ onMounted(async () => {
             <thead>
             <tr>
               <th>№ поезда</th>
+
               <th>
                 Станция отправления —
                 станция назначения
               </th>
+
               <th>
                 Время отправления и прибытия
                 по конечным станциям
               </th>
+
               <th>
                 Расстояние между станциями, км
               </th>
+
               <th>
                 Количество вагонов, ед.
               </th>
+
               <th>
                 Вагоно-километры в сутки
               </th>
+
               <th>
                 Количество дней курсирования
               </th>
+
               <th>
                 Вагоно-километры в месяц
               </th>
+
               <th>Доп. данные</th>
             </tr>
             </thead>
@@ -1086,9 +1131,9 @@ onMounted(async () => {
 
             <tr
                 v-else-if="
-                                    selectedRoute &&
-                                    trains.length === 0
-                                ">
+                  selectedRoute &&
+                  trains.length === 0
+                ">
               <td
                   class="trains-state-cell"
                   colspan="9">
@@ -1101,7 +1146,8 @@ onMounted(async () => {
               <td
                   class="trains-state-cell"
                   colspan="9">
-                Выберите номер маршрута в верхней таблице.
+                Выберите номер маршрута в верхней
+                таблице.
               </td>
             </tr>
 
@@ -1129,30 +1175,40 @@ onMounted(async () => {
 
               <td class="numeric-cell">
                 {{
-                  formatInteger(train.railcarCount)
+                  formatInteger(
+                      train.railcarCount
+                  )
                 }}
               </td>
 
               <td class="numeric-cell">
                 {{
-                  formatInteger(train.rangePerDay)
+                  formatInteger(
+                      train.rangePerDay
+                  )
                 }}
               </td>
 
               <td class="numeric-cell">
                 {{
-                  formatInteger(train.dayInRaise)
+                  formatInteger(
+                      train.dayInRaise
+                  )
                 }}
               </td>
 
               <td class="numeric-cell">
                 {{
-                  formatInteger(train.rangePerMonth)
+                  formatInteger(
+                      train.rangePerMonth
+                  )
                 }}
               </td>
 
               <td class="train-stations-cell">
-                {{ train.description ?? "—" }}
+                {{
+                  train.description ?? "—"
+                }}
               </td>
             </tr>
             </tbody>
@@ -1164,7 +1220,10 @@ onMounted(async () => {
     <div
         v-if="notification"
         class="notification is-visible"
-        :class="{ 'is-error': notificationType === 'error' }">
+        :class="{
+        'is-error':
+          notificationType === 'error'
+      }">
       {{ notification }}
     </div>
 
@@ -1173,6 +1232,5 @@ onMounted(async () => {
         :periods="availablePeriods"
         :selected-period="selectedPeriod"
         @apply="applyPeriod" />
-
   </main>
 </template>
