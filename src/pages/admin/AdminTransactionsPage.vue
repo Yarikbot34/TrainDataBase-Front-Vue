@@ -1,5 +1,5 @@
 <template>
-  <main class="admin-page">
+  <main class="routes-page admin-page">
     <header class="page-header">
       <div>
         <div class="breadcrumbs">
