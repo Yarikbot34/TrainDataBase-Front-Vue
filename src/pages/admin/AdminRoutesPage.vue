@@ -1,0 +1,43 @@
+<template>
+  <main class="admin-page">
+    <header class="page-header">
+      <div>
+        <div class="breadcrumbs">
+          <RouterLink to="/admin">
+            Администрирование
+          </RouterLink>
+
+          <span>/</span>
+
+          <strong>
+            Управление маршрутами
+          </strong>
+        </div>
+
+        <h1>
+          Управление маршрутами
+        </h1>
+
+        <p>
+          Раздел находится в разработке.
+        </p>
+      </div>
+    </header>
+
+    <section class="admin-placeholder">
+      <strong>
+        Управление маршрутами
+      </strong>
+
+      <p>
+        Функциональность будет добавлена позднее.
+      </p>
+
+      <RouterLink
+          class="admin-placeholder__back"
+          to="/admin">
+        ← Вернуться в административное меню
+      </RouterLink>
+    </section>
+  </main>
+</template>

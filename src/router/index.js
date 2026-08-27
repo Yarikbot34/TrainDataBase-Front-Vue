@@ -3,7 +3,15 @@ import {
     createWebHistory
 } from "vue-router";
 
-import { getToken } from "../api/httpClient";
+import {
+    getToken,
+    removeToken
+} from "../api/httpClient";
+
+import {
+    hasTokenRole,
+    isTokenExpired
+} from "../stores/auth";
 
 const router = createRouter({
     history: createWebHistory(),
@@ -12,50 +20,146 @@ const router = createRouter({
         {
             path: "/login",
             name: "login",
-            component: () => import("../pages/LoginPage.vue"),
+            component: () => {
+                return import(
+                    "../pages/LoginPage.vue"
+                    );
+            },
             meta: {
                 public: true
             }
         },
         {
             path: "/",
-            component: () => import("../layouts/MainLayout.vue"),
+            component: () => {
+                return import(
+                    "../layouts/MainLayout.vue"
+                    );
+            },
             children: [
                 {
                     path: "",
-                    redirect: "/statistics"
+                    redirect: "/routes"
                 },
                 {
                     path: "routes",
                     name: "routes",
-                    component: () => import("../pages/RoutesPage.vue")
+                    component: () => {
+                        return import(
+                            "../pages/RoutesPage.vue"
+                            );
+                    }
                 },
                 {
                     path: "statistics",
                     name: "statistics",
-                    component: () => import("../pages/StatisticsPage.vue")
+                    component: () => {
+                        return import(
+                            "../pages/StatisticsPage.vue"
+                            );
+                    }
                 },
                 {
                     path: "import",
                     name: "import",
-                    component: () => import("../pages/ImportPage.vue")
+                    component: () => {
+                        return import(
+                            "../pages/ImportPage.vue"
+                            );
+                    }
                 },
                 {
                     path: "map/editor",
                     name: "map-editor",
-                    component: () => import("../pages/MapEditorPage.vue")
+                    component: () => {
+                        return import(
+                            "../pages/MapEditorPage.vue"
+                            );
+                    }
                 },
                 {
                     path: "map/view",
                     name: "map-view",
-                    component: () => import("../pages/MapViewerPage.vue")
+                    component: () => {
+                        return import(
+                            "../pages/MapViewerPage.vue"
+                            );
+                    }
+                },
+
+                /*
+                 * Административный раздел.
+                 */
+                {
+                    path: "admin",
+                    name: "admin",
+                    component: () => {
+                        return import(
+                            "../pages/admin/AdminPage.vue"
+                            );
+                    },
+                    meta: {
+                        requiresRole: "Admin"
+                    }
+                },
+                {
+                    path: "admin/routes",
+                    name: "admin-routes",
+                    component: () => {
+                        return import(
+                            "../pages/admin/AdminRoutesPage.vue"
+                            );
+                    },
+                    meta: {
+                        requiresRole: "Admin"
+                    }
+                },
+                {
+                    path: "admin/trains",
+                    name: "admin-trains",
+                    component: () => {
+                        return import(
+                            "../pages/admin/AdminTrainsPage.vue"
+                            );
+                    },
+                    meta: {
+                        requiresRole: "Admin"
+                    }
+                },
+                {
+                    path: "admin/stations",
+                    name: "admin-stations",
+                    component: () => {
+                        return import(
+                            "../pages/admin/AdminStationsPage.vue"
+                            );
+                    },
+                    meta: {
+                        requiresRole: "Admin"
+                    }
+                },
+                {
+                    path: "admin/transactions",
+                    name: "admin-transactions",
+                    component: () => {
+                        return import(
+                            "../pages/admin/AdminTransactionsPage.vue"
+                            );
+                    },
+                    meta: {
+                        requiresRole: "Admin"
+                    }
                 }
             ]
         },
         {
             path: "/:pathMatch(.*)*",
             name: "error",
-            component: () => import("../pages/ErrorPage.vue"),
+            component: () => {
+                return import(
+                    "../pages/ErrorPage.vue"
+                    );
+            },
             meta: {
                 public: true
             }
@@ -66,7 +170,31 @@ const router = createRouter({
 router.beforeEach((to) => {
     const token = getToken();
 
-    if (!to.meta.public && !token) {
+    const isPublicRoute =
+        to.matched.some((route) => {
+            return route.meta.public === true;
+        });
+
+    if (
+        token &&
+        isTokenExpired(token)
+    ) {
+        removeToken();
+
+        if (!isPublicRoute) {
+            return {
+                name: "login",
+                query: {
+                    returnUrl: to.fullPath
+                }
+            };
+        }
+    }
+
+    if (
+        !isPublicRoute &&
+        !token
+    ) {
         return {
             name: "login",
             query: {
@@ -75,7 +203,34 @@ router.beforeEach((to) => {
         };
     }
 
-    if (to.name === "login" && token) {
+    const routeWithRequiredRole =
+        to.matched.find((route) => {
+            return Boolean(
+                route.meta.requiresRole
+            );
+        });
+
+    if (
+        routeWithRequiredRole &&
+        !hasTokenRole(
+            token,
+            routeWithRequiredRole
+                .meta.requiresRole
+        )
+    ) {
+        return {
+            name: "routes",
+            query: {
+                accessDenied: "admin"
+            }
+        };
+    }
+
+    if (
+        to.name === "login" &&
+        token &&
+        !isTokenExpired(token)
+    ) {
         return {
             name: "routes"
         };

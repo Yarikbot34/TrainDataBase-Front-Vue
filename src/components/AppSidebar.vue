@@ -4,10 +4,14 @@ import {
   useRouter
 } from "vue-router";
 
-import { useAuth } from "../stores/auth";
+import {
+  useAuth
+} from "../stores/auth";
 
 const router = useRouter();
+
 const auth = useAuth();
+const { isAdmin } = auth;
 
 function logout() {
   auth.logout();
@@ -42,6 +46,16 @@ function logout() {
 
       <RouterLink to="/map/view">
         Просмотр схемы
+      </RouterLink>
+
+      <!--
+        Ссылка отсутствует в DOM для всех
+        пользователей, кроме администратора.
+      -->
+      <RouterLink
+          v-if="isAdmin"
+          to="/admin">
+        Администрирование
       </RouterLink>
     </nav>
 
