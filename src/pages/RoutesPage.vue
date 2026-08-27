@@ -5,6 +5,7 @@ import {
   ref
 } from "vue";
 
+import FilterCombobox from "../components/FilterCombobox.vue";
 import PeriodModal from "../components/PeriodModal.vue";
 
 import {
@@ -717,102 +718,70 @@ const metricGroups = Object.freeze([
           </div>
 
           <div class="filters-bar routes-filters">
-            <div
-                class="filter-combobox period-filter">
-              <span class="filter-combobox__label">
-                Период
-              </span>
+            <div class="filter-combobox period-filter">
+    <span class="filter-combobox__label">
+      Период
+    </span>
 
               <button
-                  class="filter-combobox__button period-filter__button"
+                  class="
+        filter-combobox__button
+        period-filter__button
+      "
                   type="button"
                   @click="showPeriodModal = true">
-                <span class="filter-combobox__value">
-                  {{ periodButtonText }}
-                </span>
+      <span class="filter-combobox__value">
+        {{ periodButtonText }}
+      </span>
 
                 <svg
                     class="filter-combobox__caret"
                     viewBox="0 0 24 24"
                     aria-hidden="true">
                   <path
-                      d="m7 9 5 5 5-5-1.4-1.4L12 11.2 8.4 7.6 7 9Z" />
+                      d="
+ m7 9
+            5 5
+            5-5
+            -1.4-1.4
+            L12 11.2
+            8.4 7.6
+            7 9Z
+          " />
                 </svg>
               </button>
             </div>
 
-            <div class="filter-combobox">
-              <span class="filter-combobox__label">
-                Номер маршрута
-              </span>
+            <FilterCombobox
+                v-model="selectedNumber"
+                :options="numberOptions"
+                label="Номер маршрута"
+                all-text="Все номера"
+                placeholder="Поиск номера маршрута"
+                @change="loadRoutes" />
 
-              <select
-                  v-model="selectedNumber"
-                  class="filter-combobox__button"
-                  @change="loadRoutes">
-                <option value="">
-                  Все номера
-                </option>
+            <FilterCombobox
+                v-model="selectedStationFrom"
+                :options="stationOptions"
+                label="Станция отправления"
+                all-text="Все станции"
+                placeholder="Поиск станции отправления"
+                @change="loadRoutes" />
 
-                <option
-                    v-for="number in numberOptions"
-                    :key="number"
-                    :value="number">
-                  {{ number }}
-                </option>
-              </select>
-            </div>
-
-            <div class="filter-combobox">
-              <span class="filter-combobox__label">
-                Станция отправления
-              </span>
-
-              <select
-                  v-model="selectedStationFrom"
-                  class="filter-combobox__button"
-                  @change="loadRoutes">
-                <option value="">
-                  Все станции
-                </option>
-
-                <option
-                    v-for="station in stationOptions"
-                    :key="station"
-                    :value="station">
-                  {{ station }}
-                </option>
-              </select>
-            </div>
-
-            <div class="filter-combobox">
-              <span class="filter-combobox__label">
-                Станция прибытия
-              </span>
-
-              <select
-                  v-model="selectedStationTo"
-                  class="filter-combobox__button"
-                  @change="loadRoutes">
-                <option value="">
-                  Все станции
-                </option>
-
-                <option
-                    v-for="station in stationOptions"
-                    :key="`to-${station}`"
-                    :value="station">
-                  {{ station }}
-                </option>
-              </select>
-            </div>
+            <FilterCombobox
+                v-model="selectedStationTo"
+                :options="stationOptions"
+                label="Станция прибытия"
+                all-text="Все станции"
+                placeholder="Поиск станции прибытия"
+                @change="loadRoutes" />
 
             <button
                 class="filters-reset-button"
                 type="button"
                 :class="{
-                'is-active': hasActiveFilters
-              }"
+      'is-active': hasActiveFilters
+    }"
                 @click="resetFilters">
               Сбросить фильтры
             </button>
