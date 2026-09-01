@@ -68,7 +68,9 @@ const monthNames = Object.freeze([
 const userNameOptions = computed(() => {
   return [...new Set(
       transactions.value
-          .map((transaction) => String(transaction.userName ?? "").trim())
+          .map((transaction) => {
+            return String(transaction.userName ?? "").trim();
+          })
           .filter(Boolean)
   )]
       .sort((first, second) => {
@@ -103,7 +105,7 @@ const filteredTransactions = computed(() => {
       .filter((transaction) => {
         if (
             selectedUserName.value &&
-            transaction.userName !== selectedUserName.value
+            String(transaction.userName ?? "") !== selectedUserName.value
         ) {
           return false;
         }
@@ -118,6 +120,18 @@ const filteredTransactions = computed(() => {
         if (
             normalizedDate &&
             formatDateOnly(transaction.dateCreated) !== normalizedDate
+        ) {
+          return false;
+        }
+
+        if (
+            selectedPeriod.value.length &&
+            !selectedPeriod.value.some((period) => {
+              return (
+                  Number(period.year) === Number(transaction.year) &&
+                  period.months.map(Number).includes(Number(transaction.month))
+              );
+            })
         ) {
           return false;
         }
@@ -167,9 +181,7 @@ function extractItems(payload) {
 function toNumber(value) {
   const number = Number(value);
 
-  return Number.isFinite(number)
-      ? number
-      : 0;
+  return Number.isFinite(number) ? number : 0;
 }
 
 function formatYear(value) {
@@ -183,7 +195,13 @@ function formatYear(value) {
 }
 
 function formatMonth(value) {
-  return String(toNumber(value)).padStart(2, "0");
+  const month = toNumber(value);
+
+  if (month <= 0 || month > 12) {
+    return "—";
+  }
+
+  return String(month).padStart(2, "0");
 }
 
 function formatInteger(value) {
@@ -247,23 +265,23 @@ function canDeleteObjects(transaction) {
 
 function sortTransactions(first, second) {
   const yearDifference =
-      toNumber(second.year) -
-      toNumber(first.year);
+      toNumber(second.year) - toNumber(first.year);
 
   if (yearDifference !== 0) {
     return yearDifference;
   }
 
   const monthDifference =
-      toNumber(second.month) -
-      toNumber(first.month);
+      toNumber(second.month) - toNumber(first.month);
 
   if (monthDifference !== 0) {
     return monthDifference;
   }
 
-  return new Date(second.dateCreated).getTime() -
-      new Date(first.dateCreated).getTime();
+  return (
+      new Date(second.dateCreated).getTime() -
+      new Date(first.dateCreated).getTime()
+  );
 }
 
 function dateMask(value) {
@@ -447,10 +465,10 @@ async function saveDescription() {
 
     const response = await updateTransaction(updatedTransaction);
 
-    const transactionFromResponse = response &&
-    typeof response === "object"
-        ? response
-        : updatedTransaction;
+    const transactionFromResponse =
+        response && typeof response === "object"
+            ? response
+            : updatedTransaction;
 
     const index = transactions.value.findIndex((transaction) => {
       return transaction.id === editableTransaction.value.id;
@@ -589,6 +607,7 @@ onMounted(async () => {
       <div class="transactions-card__header">
         <div>
           <h2>Список транзакций</h2>
+
           <p>
             {{
               loading
@@ -668,6 +687,7 @@ onMounted(async () => {
           <thead>
           <tr>
             <th>Время создания</th>
+            <th>Пользователь</th>
             <th>Год</th>
             <th>Месяц</th>
             <th>Получено объектов</th>
@@ -681,7 +701,7 @@ onMounted(async () => {
 
           <tbody>
           <tr v-if="loading">
-            <td class="transactions-state-cell" colspan="7">
+            <td class="transactions-state-cell" colspan="8">
               <div class="loading-state">
                 <span class="spinner"></span>
                 Загрузка транзакций…
@@ -690,12 +710,14 @@ onMounted(async () => {
           </tr>
 
           <tr v-else-if="error">
-            <td class="transactions-state-cell" colspan="7">
+            <td class="transactions-state-cell" colspan="8">
               <div class="error-state">
                 <strong>Ошибка загрузки</strong>
                 <span>{{ error }}</span>
 
-                <button type="button" @click="loadTransactions">
+                <button
+                    type="button"
+                    @click="loadTransactions">
                   Повторить
                 </button>
               </div>
@@ -703,7 +725,7 @@ onMounted(async () => {
           </tr>
 
           <tr v-else-if="filteredTransactions.length === 0">
-            <td class="transactions-state-cell" colspan="7">
+            <td class="transactions-state-cell" colspan="8">
               Транзакции не найдены.
             </td>
           </tr>
@@ -714,6 +736,10 @@ onMounted(async () => {
               :key="transaction.id">
             <td class="transaction-date-cell">
               {{ formatDateTime(transaction.dateCreated) }}
+            </td>
+
+            <td class="transaction-user-cell">
+              {{ transaction.userName || "—" }}
             </td>
 
             <td>
@@ -775,7 +801,8 @@ onMounted(async () => {
           <header class="transaction-modal__header">
             <div>
               <span class="transaction-modal__caption">
-                Транзакция за {{ formatMonth(editableTransaction.month) }}.{{ formatYear(editableTransaction.year) }}
+                Пользователь:
+                {{ editableTransaction.userName || "—" }}
               </span>
 
               <h2 id="edit-description-title">
@@ -796,7 +823,13 @@ onMounted(async () => {
           <div class="transaction-modal__body">
             <div class="transaction-old-description">
               <span>Старое описание</span>
-              <p>{{ editableTransaction.description || "Описание отсутствует" }}</p>
+
+              <p>
+                {{
+                  editableTransaction.description ||
+                  "Описание отсутствует"
+                }}
+              </p>
             </div>
 
             <label class="transaction-modal__field">
@@ -830,7 +863,11 @@ onMounted(async () => {
                 type="button"
                 :disabled="descriptionSaving"
                 @click="saveDescription">
-              {{ descriptionSaving ? "Сохранение…" : "Сохранить" }}
+              {{
+                descriptionSaving
+                    ? "Сохранение…"
+                    : "Сохранить"
+              }}
             </button>
           </footer>
         </section>
@@ -846,11 +883,13 @@ onMounted(async () => {
             class="transaction-modal__backdrop"
             @click="closeDeleteModal"></div>
 
-        <section class="transaction-modal__dialog transaction-modal__dialog--danger">
+        <section
+            class="transaction-modal__dialog transaction-modal__dialog--danger">
           <header class="transaction-modal__header">
             <div>
               <span class="transaction-modal__caption">
-                Транзакция за {{ formatMonth(deletableTransaction.month) }}.{{ formatYear(deletableTransaction.year) }}
+                Пользователь:
+                {{ deletableTransaction.userName || "—" }}
               </span>
 
               <h2 id="delete-transaction-title">
@@ -870,7 +909,8 @@ onMounted(async () => {
 
           <div class="transaction-modal__body">
             <p class="transaction-modal__warning">
-              Действие удалит объекты, полученные в рамках выбранной транзакции.
+              Действие удалит объекты, полученные в рамках
+              выбранной транзакции.
             </p>
 
             <label class="transaction-modal__field">
@@ -915,7 +955,11 @@ onMounted(async () => {
                 type="button"
                 :disabled="deleteSaving"
                 @click="confirmDeleteObjects">
-              {{ deleteSaving ? "Удаление…" : "Удалить" }}
+              {{
+                deleteSaving
+                    ? "Удаление…"
+                    : "Удалить"
+              }}
             </button>
           </footer>
         </section>

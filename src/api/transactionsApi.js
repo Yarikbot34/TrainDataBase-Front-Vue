@@ -1,13 +1,22 @@
-import { apiFetch, readJson } from "./httpClient";
+import {
+    apiFetch,
+    readJson
+} from "./httpClient";
 
-const ADMIN_TRANSACTIONS_URL = "/api/v1/adminPanel/transactions";
-const CONTENT_URL = "/api/v1/content";
+const ADMIN_TRANSACTIONS_URL =
+    "/api/v1/adminPanel/transactions";
+
+const CONTENT_URL =
+    "/api/v1/content";
 
 export async function getTransactions(filters) {
-    const response = await apiFetch(ADMIN_TRANSACTIONS_URL, {
-        method: "POST",
-        body: JSON.stringify(filters)
-    });
+    const response = await apiFetch(
+        ADMIN_TRANSACTIONS_URL,
+        {
+            method: "POST",
+            body: JSON.stringify(filters)
+        }
+    );
 
     return await readJson(response);
 }
@@ -21,7 +30,9 @@ export async function getWrittenTransactionTypes() {
 }
 
 export async function updateTransaction(transaction) {
-    const transactionId = encodeURIComponent(transaction.id);
+    const transactionId = encodeURIComponent(
+        transaction.id
+    );
 
     const response = await apiFetch(
         `${ADMIN_TRANSACTIONS_URL}/${transactionId}`,
@@ -43,7 +54,9 @@ export async function deleteTransactionObjects({
                                                    stationDelete,
                                                    adminPassword
                                                }) {
-    const encodedTransactionId = encodeURIComponent(transactionId);
+    const encodedTransactionId = encodeURIComponent(
+        transactionId
+    );
 
     const response = await apiFetch(
         `${ADMIN_TRANSACTIONS_URL}/${encodedTransactionId}`,

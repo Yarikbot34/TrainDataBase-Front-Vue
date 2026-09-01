@@ -21,10 +21,7 @@ body {
   margin-bottom: 60px;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
-}
+
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
@@ -57,6 +54,11 @@ body {
 html {
   min-width: 320px;
   background: var(--page-background);
+}
+
+.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
+  color: var(--accent-light);
+  text-align: end;
 }
 
 body {
@@ -309,11 +311,6 @@ button {
     - верхняя часть содержит основную таблицу маршрутов;
     - нижняя часть предназначена для второй таблицы.
 */
-.workspace.is-split {
-  grid-template-rows: minmax(280px, 1fr) minmax(240px, 0.75fr);
-  gap: 14px;
-}
-
 .workspace__main {
   min-width: 0;
   min-height: 0;
@@ -858,7 +855,7 @@ button {
 .routes-table .column-header th {
   width: 60px;
   min-width: 60px;
-  height: 170px;
+  height: 100px;
   padding: 8px 4px;
   vertical-align: middle;
   white-space: normal;
@@ -1101,12 +1098,6 @@ button {
     height: calc(100vh - 126px);
     min-height: 460px;
   }
-
-  .workspace.is-split {
-    grid-template-rows: minmax(250px, 1fr) minmax(220px, 0.8fr);
-    gap: 12px;
-  }
-
   .details-panel__content {
     padding: 16px;
   }
@@ -1305,8 +1296,8 @@ button {
   }
 
   .workspace.is-split {
-    grid-template-rows: minmax(210px, 1fr) minmax(210px, 0.9fr);
-    gap: 10px;
+    grid-template-rows: minmax(210px, 1fr) minmax(140px, 0.75fr);
+    gap: 5px;
   }
 
   .table-card__toolbar {
