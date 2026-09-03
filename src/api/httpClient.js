@@ -52,22 +52,70 @@ export async function apiFetch(url, options = {}) {
     return response;
 }
 
+function getServerErrorMessage(body, status) {
+    if (typeof body === "string" && body.trim()) {
+        return body.trim();
+    }
+
+    if (!body || typeof body !== "object") {
+        return `Сервер вернул ошибку ${status}`;
+    }
+
+    const directMessage =
+        body.message ||
+        body.Message ||
+        body.detail ||
+        body.Detail ||
+        body.error ||
+        body.Error;
+
+    if (typeof directMessage === "string" && directMessage.trim()) {
+        return directMessage.trim();
+    }
+
+    if (body.errors && typeof body.errors === "object") {
+        const validationMessages = Object.values(body.errors)
+            .flat()
+            .filter((message) => typeof message === "string" && message.trim())
+            .join(" ");
+
+        if (validationMessages) {
+            return validationMessages;
+        }
+    }
+
+    if (typeof body.title === "string" && body.title.trim()) {
+        return body.title.trim();
+    }
+
+    if (typeof body.Title === "string" && body.Title.trim()) {
+        return body.Title.trim();
+    }
+
+    return `Сервер вернул ошибку ${status}`;
+}
+
 export async function readJson(response) {
     let body = null;
 
     try {
-        body = await response.json();
+        const responseText = await response.text();
+
+        if (responseText.trim()) {
+            try {
+                body = JSON.parse(responseText);
+            } catch {
+                body = responseText;
+            }
+        }
     } catch {
         body = null;
     }
 
     if (!response.ok) {
-        const message =
-            body?.message ||
-            body?.detail ||
-            `Сервер вернул ошибку ${response.status}`;
-
-        throw new Error(message);
+        throw new Error(
+            getServerErrorMessage(body, response.status)
+        );
     }
 
     return body;
