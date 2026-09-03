@@ -807,7 +807,6 @@ const metricGroups = Object.freeze([
                     class="sticky-column sticky-column--route"
                     rowspan="3">
                   № поезда
-                  «туда-обратно»
                 </th>
 
                 <th
@@ -1050,8 +1049,7 @@ const metricGroups = Object.freeze([
               </th>
 
               <th>
-                Время отправления и прибытия
-                по конечным станциям
+                Время отправления-прибытия
               </th>
 
               <th>
@@ -1075,6 +1073,10 @@ const metricGroups = Object.freeze([
               </th>
 
               <th>Доп. данные</th>
+
+              <th class="train-row-in-file-column">
+                № строки в файле
+              </th>
             </tr>
             </thead>
 
@@ -1082,7 +1084,7 @@ const metricGroups = Object.freeze([
             <tr v-if="trainsLoading">
               <td
                   class="trains-state-cell"
-                  colspan="9">
+                  colspan="10">
                 <div class="loading-state">
                   <span class="spinner"></span>
                   Загрузка данных по поездам…
@@ -1093,7 +1095,7 @@ const metricGroups = Object.freeze([
             <tr v-else-if="trainsError">
               <td
                   class="trains-state-cell"
-                  colspan="9">
+                  colspan="10">
                 {{ trainsError }}
               </td>
             </tr>
@@ -1105,7 +1107,7 @@ const metricGroups = Object.freeze([
                 ">
               <td
                   class="trains-state-cell"
-                  colspan="9">
+                  colspan="10">
                 По выбранному маршруту данные
                 не найдены.
               </td>
@@ -1114,7 +1116,7 @@ const metricGroups = Object.freeze([
             <tr v-else-if="!selectedRoute">
               <td
                   class="trains-state-cell"
-                  colspan="9">
+                  colspan="10">
                 Выберите номер маршрута в верхней
                 таблице.
               </td>
@@ -1174,10 +1176,14 @@ const metricGroups = Object.freeze([
                 }}
               </td>
 
-              <td class="train-stations-cell">
+              <td class="train-desc-cell">
                 {{
                   train.description ?? "—"
                 }}
+              </td>
+
+              <td class="train-row-in-file-column">
+                {{ train.rowInFile ?? "—" }}
               </td>
             </tr>
             </tbody>
