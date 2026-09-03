@@ -51,7 +51,6 @@ export async function updateTransaction(transaction) {
 
 export async function deleteTransactionObjects({
                                                    transactionId,
-                                                   stationDelete,
                                                    adminPassword
                                                }) {
     const encodedTransactionId = encodeURIComponent(
@@ -64,7 +63,6 @@ export async function deleteTransactionObjects({
             method: "DELETE",
             body: JSON.stringify({
                 transactionId,
-                stationDelete,
                 adminPassword
             })
         }

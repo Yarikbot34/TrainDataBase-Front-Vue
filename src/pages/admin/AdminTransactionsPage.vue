@@ -40,7 +40,6 @@ const descriptionError = ref("");
 
 const deletableTransaction = ref(null);
 const adminPassword = ref("");
-const stationDelete = ref(false);
 const deleteSaving = ref(false);
 const deleteError = ref("");
 
@@ -503,7 +502,6 @@ function openDeleteModal(transaction) {
 
   deletableTransaction.value = transaction;
   adminPassword.value = "";
-  stationDelete.value = false;
   deleteError.value = "";
 }
 
@@ -514,7 +512,6 @@ function closeDeleteModal() {
 
   deletableTransaction.value = null;
   adminPassword.value = "";
-  stationDelete.value = false;
   deleteError.value = "";
 }
 
@@ -534,15 +531,10 @@ async function confirmDeleteObjects() {
   try {
     await deleteTransactionObjects({
       transactionId: deletableTransaction.value.id,
-      stationDelete: stationDelete.value,
       adminPassword: adminPassword.value
     });
 
-    const deletedId = deletableTransaction.value.id;
-
-    transactions.value = transactions.value.filter((transaction) => {
-      return transaction.id !== deletedId;
-    });
+    await loadTransactions();
 
     closeDeleteModal();
 
@@ -923,15 +915,6 @@ onMounted(async () => {
                   placeholder="Введите пароль"
                   :disabled="deleteSaving"
                   @keydown.enter="confirmDeleteObjects" />
-            </label>
-
-            <label class="transaction-delete-stations">
-              <input
-                  v-model="stationDelete"
-                  type="checkbox"
-                  :disabled="deleteSaving" />
-
-              <span>Удалить связанные станции</span>
             </label>
 
             <p
