@@ -293,7 +293,8 @@ async function uploadFile() {
     const payload = await uploadImportFile({
       file: selectedFile.value,
       year: Number(String(year.value).trim()),
-      month: Number(String(month.value).trim())
+      month: Number(String(month.value).trim()),
+      description: note.value.trim()
     });
 
     const records = extractRecords(payload);

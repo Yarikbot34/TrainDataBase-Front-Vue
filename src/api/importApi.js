@@ -10,13 +10,15 @@ const ADD_DESCRIPTION_URL =
     "/api/v1/file/input/addDesc";
 
 export async function uploadImportFile({
-                                           file,
-                                           year,
-                                           month
-                                       }) {
+       file,
+       year,
+       month,
+       description
+       }) {
     const params = new URLSearchParams({
         year: String(year).padStart(2, "0"),
-        month: String(month)
+        month: String(month),
+        description: description ?? ""
     });
 
     const formData = new FormData();
