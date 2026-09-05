@@ -1,7 +1,6 @@
 <script setup>
 import {
   computed,
-  nextTick,
   ref
 } from "vue";
 
@@ -9,6 +8,9 @@ import {
   updateRecordDescription,
   uploadImportFile
 } from "../api/importApi";
+
+import RecordDescriptionModal from
+      "../components/RecordDescriptionModal.vue";
 
 const currentYear = new Date().getFullYear();
 
@@ -44,19 +46,12 @@ const serverResult = ref(null);
 
 const importedRecords = ref([]);
 const currentRecordIndex = ref(0);
-const description = ref("");
 const descriptionError = ref("");
-
-const descriptionInput = ref(null);
 
 const currentRecord = computed(() => {
   return importedRecords.value[
       currentRecordIndex.value
       ] ?? null;
-});
-
-const hasRecords = computed(() => {
-  return importedRecords.value.length > 0;
 });
 
 const currentYearPlaceholder = computed(() => {
@@ -212,6 +207,16 @@ function handleDrop(event) {
   setSelectedFile(files[0]);
 }
 
+function handleDropZoneKeydown(event) {
+  if (
+      event.key === "Enter" ||
+      event.key === " "
+  ) {
+    event.preventDefault();
+    openFileDialog();
+  }
+}
+
 function validateForm() {
   hideValidation();
 
@@ -240,17 +245,13 @@ function validateForm() {
       numericMonth < 1 ||
       numericMonth > 12
   ) {
-    showValidation(
-        "Выберите месяц."
-    );
+    showValidation("Выберите месяц.");
 
     return false;
   }
 
   if (!selectedFile.value) {
-    showValidation(
-        "Выберите XLSX-файл."
-    );
+    showValidation("Выберите XLSX-файл.");
 
     return false;
   }
@@ -264,6 +265,30 @@ function validateForm() {
   }
 
   return true;
+}
+
+function closeDescriptionModal() {
+  importedRecords.value = [];
+  currentRecordIndex.value = 0;
+  descriptionError.value = "";
+}
+
+function goToNextRecord() {
+  currentRecordIndex.value += 1;
+  descriptionError.value = "";
+
+  if (currentRecordIndex.value >= importedRecords.value.length) {
+    closeDescriptionModal();
+  }
+}
+
+function skipCurrentDescription() {
+  if (
+      isDescriptionModalVisible.value &&
+      !isSendingDescription.value
+  ) {
+    goToNextRecord();
+  }
 }
 
 function resetForm() {
@@ -293,8 +318,7 @@ async function uploadFile() {
     const payload = await uploadImportFile({
       file: selectedFile.value,
       year: Number(String(year.value).trim()),
-      month: Number(String(month.value).trim()),
-      description: note.value.trim()
+      month: Number(String(month.value).trim())
     });
 
     const records = extractRecords(payload);
@@ -314,10 +338,6 @@ async function uploadFile() {
     );
 
     clearSelectedFile();
-
-    if (records.length > 0) {
-      await openCurrentDescription();
-    }
   } catch (exception) {
     console.error(
         "Ошибка загрузки файла:",
@@ -336,97 +356,7 @@ async function uploadFile() {
   }
 }
 
-function getRecordTrainNumber(record) {
-  return record?.number ??
-      record?.trainNumber ??
-      record?.train ??
-      "—";
-}
-
-function getRecordPeriod(record) {
-  return record?.period ??
-      record?.date ??
-      `${year.value || "—"}.${month.value || "—"}`;
-}
-
-function getRecordRoute(record) {
-  const stations = [
-    record?.stationFrom,
-    record?.stationMiddle,
-    record?.stationTo
-  ].filter((station) => {
-    return typeof station === "string" &&
-        station.trim() !== "";
-  });
-
-  return stations.length > 0
-      ? stations.join(" — ")
-      : record?.route ??
-      record?.routeName ??
-      "—";
-}
-
-function getRecordDescription(record) {
-  return record?.description ?? "";
-}
-
-async function openCurrentDescription() {
-  const record = currentRecord.value;
-
-  if (!record) {
-    closeDescriptionModal();
-    return;
-  }
-
-  description.value = getRecordDescription(record);
-  descriptionError.value = "";
-
-  await nextTick();
-  descriptionInput.value?.focus();
-}
-
-function closeDescriptionModal() {
-  importedRecords.value = [];
-  currentRecordIndex.value = 0;
-  description.value = "";
-  descriptionError.value = "";
-}
-
-function goToNextRecord() {
-  currentRecordIndex.value += 1;
-  openCurrentDescription();
-}
-
-function skipCurrentDescription() {
-  if (isDescriptionModalVisible.value) {
-    goToNextRecord();
-  }
-}
-
-async function pasteDescription() {
-  descriptionError.value = "";
-
-  try {
-    if (!navigator.clipboard?.readText) {
-      throw new Error(
-          "Браузер не разрешил доступ к буферу обмена."
-      );
-    }
-
-    description.value =
-        await navigator.clipboard.readText();
-
-    await nextTick();
-    descriptionInput.value?.focus();
-  } catch (exception) {
-    descriptionError.value =
-        exception instanceof Error
-            ? exception.message
-            : "Не удалось прочитать буфер обмена.";
-  }
-}
-
-async function sendDescription() {
+async function saveDescription(description) {
   const record = currentRecord.value;
 
   if (
@@ -453,14 +383,14 @@ async function sendDescription() {
     await updateRecordDescription(
         record.id,
         record,
-        description.value
+        description
     );
 
     importedRecords.value[
         currentRecordIndex.value
         ] = {
       ...record,
-      description: description.value
+      description
     };
 
     goToNextRecord();
@@ -478,32 +408,10 @@ async function sendDescription() {
     isSendingDescription.value = false;
   }
 }
-
-function handleDropZoneKeydown(event) {
-  if (
-      event.key === "Enter" ||
-      event.key === " "
-  ) {
-    event.preventDefault();
-    openFileDialog();
-  }
-}
-
-function handleEscape(event) {
-  if (
-      event.key === "Escape" &&
-      isDescriptionModalVisible.value &&
-      !isSendingDescription.value
-  ) {
-    closeDescriptionModal();
-  }
-}
 </script>
 
 <template>
-  <main
-      class="file-input-page"
-      @keydown="handleEscape">
+  <main class="file-input-page">
     <header class="page-header">
       <div>
         <div class="breadcrumbs">
@@ -524,9 +432,11 @@ function handleEscape(event) {
     <section class="upload-card">
       <header class="upload-card__header">
         <div class="upload-card__header-icon">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-                d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-7 16h14v2H5v-2Z" />
+          <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+          >
+            <path d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-7 16h14v2H5v-2Z" />
           </svg>
         </div>
 
@@ -543,7 +453,8 @@ function handleEscape(event) {
       <form
           class="upload-form"
           @submit.prevent="uploadFile"
-          @reset.prevent="resetForm">
+          @reset.prevent="resetForm"
+      >
         <div class="period-fields">
           <div class="form-field">
             <label for="year-input">
@@ -559,12 +470,13 @@ function handleEscape(event) {
                 max="99"
                 step="1"
                 :placeholder="currentYearPlaceholder"
-                :disabled="isUploading" />
+                :disabled="isUploading"
+            />
 
             <span class="form-field__description">
-                            Укажите последние две цифры года,
-                            например: 26.
-                        </span>
+              Укажите последние две цифры года,
+              например: 26.
+            </span>
           </div>
 
           <div class="form-field">
@@ -575,7 +487,8 @@ function handleEscape(event) {
             <select
                 id="month-input"
                 v-model="month"
-                :disabled="isUploading">
+                :disabled="isUploading"
+            >
               <option value="">
                 Выберите месяц
               </option>
@@ -583,17 +496,19 @@ function handleEscape(event) {
               <option
                   v-for="item in months"
                   :key="item.value"
-                  :value="item.value">
+                  :value="item.value"
+              >
                 {{ item.label }}
               </option>
             </select>
 
             <span class="form-field__description">
-                            Период, за который загружаются данные.
-                        </span>
+              Период, за который загружаются данные.
+            </span>
           </div>
         </div>
 
+        <!-- Сохранённое поле исходной страницы -->
         <div class="form-field">
           <label for="period-note">
             Примечание (необязательно)
@@ -605,12 +520,13 @@ function handleEscape(event) {
               type="text"
               maxlength="500"
               placeholder="Добавьте примечание к периоду"
-              :disabled="isUploading" />
+              :disabled="isUploading"
+          />
 
           <span class="form-field__description">
-                        Поле пока отображается только в интерфейсе
-                        и не отправляется на сервер.
-                    </span>
+            Поле пока отображается только в интерфейсе
+            и не отправляется на сервер.
+          </span>
         </div>
 
         <div class="form-field">
@@ -625,33 +541,31 @@ function handleEscape(event) {
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               :disabled="isUploading"
-              @change="handleFileChange" />
+              @change="handleFileChange"
+          />
 
           <div
               ref="fileDropZone"
               class="file-drop-zone"
               :class="{
-                            'is-dragging': isDragging
-                        }"
+              'is-dragging': isDragging
+            }"
               tabindex="0"
               role="button"
               aria-label="Выбрать XLSX-файл"
               @click="openFileDialog"
               @keydown="handleDropZoneKeydown"
-              @dragenter.prevent="
-                            isDragging = true
-                        "
-              @dragover.prevent="
-                            isDragging = true
-                        "
-              @dragleave.prevent="
-                            isDragging = false
-                        "
-              @drop="handleDrop">
+              @dragenter.prevent="isDragging = true"
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop="handleDrop"
+          >
             <div class="file-drop-zone__icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                    d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-1 11h2v-3h2l-3-3-3 3h2v3ZM5 19h14v2H5v-2Z" />
+              <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+              >
+                <path d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-1 11h2v-3h2l-3-3-3 3h2v3ZM5 19h14v2H5v-2Z" />
               </svg>
             </div>
 
@@ -661,22 +575,25 @@ function handleEscape(event) {
               </strong>
 
               <span>
-                                или нажмите, чтобы выбрать файл
-                            </span>
+                или нажмите, чтобы выбрать файл
+              </span>
 
               <span class="file-select-button">
-                                Выбрать файл
-                            </span>
+                Выбрать файл
+              </span>
             </div>
           </div>
 
           <div
               v-if="selectedFile"
-              class="selected-file">
+              class="selected-file"
+          >
             <div class="selected-file__icon">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm1 1.5L18.5 7H15V3.5ZM6 4h7v5h5v11H6V4Zm2 8h8v2H8v-2Zm0 4h8v2H8v-2Z" />
+              <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm1 1.5L18.5 7H15V3.5ZM6 4h7v5h5v11H6V4Zm2 8h8v2H8v-2Zm0 4h8v2H8v-2Z" />
               </svg>
             </div>
 
@@ -686,8 +603,8 @@ function handleEscape(event) {
               </strong>
 
               <span>
-                                {{ formatFileSize(selectedFile.size) }}
-                            </span>
+                {{ formatFileSize(selectedFile.size) }}
+              </span>
             </div>
 
             <button
@@ -695,20 +612,22 @@ function handleEscape(event) {
                 type="button"
                 aria-label="Удалить выбранный файл"
                 :disabled="isUploading"
-                @click="clearSelectedFile">
+                @click="clearSelectedFile"
+            >
               ×
             </button>
           </div>
 
           <span class="form-field__description">
-                        Поддерживается строго один файл
-                        с расширением .xlsx.
-                    </span>
+            Поддерживается строго один файл
+            с расширением .xlsx.
+          </span>
         </div>
 
         <div
             v-if="validationMessage"
-            class="validation-message">
+            class="validation-message"
+        >
           {{ validationMessage }}
         </div>
 
@@ -716,33 +635,37 @@ function handleEscape(event) {
           <button
               class="upload-button"
               type="submit"
-              :disabled="isUploading">
+              :disabled="isUploading"
+          >
             <svg
                 v-if="!isUploading"
                 viewBox="0 0 24 24"
-                aria-hidden="true">
-              <path
-                  d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-1 11h2v-3h2l-3-3-3 3h2v3ZM5 19h14v2H5v-2Z" />
+                aria-hidden="true"
+            >
+              <path d="M12 3 5 10h4v7h6v-7h4l-7-7Zm-1 11h2v-3h2l-3-3-3 3h2v3ZM5 19h14v2H5v-2Z" />
             </svg>
 
             <span
                 v-if="!isUploading"
-                class="upload-button__text">
-                            Загрузить файл
-                        </span>
+                class="upload-button__text"
+            >
+              Загрузить файл
+            </span>
 
             <span
                 v-else
-                class="upload-button__loading">
-                            <span class="spinner"></span>
-                            Загрузка…
-                        </span>
+                class="upload-button__loading"
+            >
+              <span class="spinner"></span>
+              Загрузка…
+            </span>
           </button>
 
           <button
               class="reset-button"
               type="reset"
-              :disabled="isUploading">
+              :disabled="isUploading"
+          >
             Очистить
           </button>
         </div>
@@ -751,18 +674,18 @@ function handleEscape(event) {
             v-if="serverResult"
             class="server-result"
             :class="{
-                        'server-result--success':
-                            serverResult.type === 'success',
-                        'server-result--error':
-                            serverResult.type === 'error'
-                    }">
+            'server-result--success':
+              serverResult.type === 'success',
+            'server-result--error':
+              serverResult.type === 'error'
+          }"
+        >
           <div class="server-result__icon">
-                        <span
-                            v-if="
-                                serverResult.type === 'success'
-                            ">
-                            ✓
-                        </span>
+            <span
+                v-if="serverResult.type === 'success'"
+            >
+              ✓
+            </span>
 
             <span v-else>!</span>
           </div>
@@ -781,174 +704,24 @@ function handleEscape(event) {
               class="server-result__close"
               type="button"
               aria-label="Закрыть сообщение"
-              @click="closeServerResult">
+              @click="closeServerResult"
+          >
             ×
           </button>
         </div>
       </form>
     </section>
 
-    <Teleport to="body">
-      <div
-          v-if="isDescriptionModalVisible"
-          class="description-modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="description-modal-title">
-        <div class="description-modal__backdrop"></div>
-
-        <section class="description-modal__dialog">
-          <header class="description-modal__header">
-            <div>
-                            <span class="description-modal__caption">
-                                Добавление описания
-                            </span>
-
-              <h2 id="description-modal-title">
-                Описание маршрутной записи
-              </h2>
-
-              <p>
-                Запись
-                {{ currentRecordIndex + 1 }}
-                из
-                {{ importedRecords.length }}
-              </p>
-            </div>
-
-            <button
-                class="description-modal__close"
-                type="button"
-                aria-label="Закрыть"
-                :disabled="isSendingDescription"
-                @click="closeDescriptionModal">
-              ×
-            </button>
-          </header>
-
-          <div class="description-modal__body">
-            <dl class="description-record-info">
-              <div>
-                <dt>Номер поезда</dt>
-                <dd>
-                  {{
-                    getRecordTrainNumber(
-                        currentRecord
-                    )
-                  }}
-                </dd>
-              </div>
-
-              <div>
-                <dt>Период</dt>
-                <dd>
-                  {{
-                    getRecordPeriod(
-                        currentRecord
-                    )
-                  }}
-                </dd>
-              </div>
-
-              <div>
-                <dt>Маршрут</dt>
-                <dd>
-                  {{
-                    getRecordRoute(
-                        currentRecord
-                    )
-                  }}
-                </dd>
-              </div>
-            </dl>
-
-            <div class="form-field">
-              <label for="description-input">
-                Описание
-              </label>
-
-              <textarea
-                  id="description-input"
-                  ref="descriptionInput"
-                  v-model="description"
-                  rows="5"
-                  placeholder="Введите описание"
-                  :disabled="
-                                    isSendingDescription
-                                "
-                  @keydown.ctrl.enter="
-                                    sendDescription
-                                "></textarea>
-            </div>
-
-            <div
-                v-if="descriptionError"
-                class="description-modal__error">
-              {{ descriptionError }}
-            </div>
-
-            <p class="form-field__description">
-              Для отправки будет использована исходная
-              запись, изменится только поле «Описание».
-            </p>
-          </div>
-
-          <footer class="description-modal__actions">
-            <button
-                class="clipboard-button"
-                type="button"
-                :disabled="
-                                isSendingDescription
-                            "
-                @click="pasteDescription">
-              Вставить из буфера обмена
-            </button>
-
-            <div class="description-modal__main-actions">
-              <button
-                  class="skip-button"
-                  type="button"
-                  :disabled="
-                                    isSendingDescription
-                                "
-                  @click="skipCurrentDescription">
-                Пропустить
-              </button>
-
-              <button
-                  class="
-                                    submit-description-button
-                                "
-                  type="button"
-                  :disabled="
-                                    isSendingDescription
-                                "
-                  :class="{
-                                    'is-loading':
-                                        isSendingDescription
-                                }"
-                  @click="sendDescription">
-                                <span
-                                    v-if="
-                                        !isSendingDescription
-                                    "
-                                    class="
-                                        submit-description-button__text
-                                    ">
-                                    Отправить
-                                </span>
-
-                <span
-                    v-else
-                    class="submit-description-button__loading">
-                      <span class="spinner"></span>
-                    Отправка…
-                </span>
-              </button>
-            </div>
-          </footer>
-        </section>
-      </div>
-    </Teleport>
+    <RecordDescriptionModal
+        v-if="isDescriptionModalVisible"
+        :record="currentRecord"
+        :current-index="currentRecordIndex"
+        :total-records="importedRecords.length"
+        :is-sending="isSendingDescription"
+        :error="descriptionError"
+        @close="closeDescriptionModal"
+        @skip="skipCurrentDescription"
+        @save="saveDescription"
+    />
   </main>
 </template>
