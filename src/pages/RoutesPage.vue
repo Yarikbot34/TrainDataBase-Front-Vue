@@ -7,6 +7,12 @@ import {
 
 import FilterCombobox from "../components/FilterCombobox.vue";
 import PeriodModal from "../components/PeriodModal.vue";
+import RecordDescriptionModal from
+      "../components/RecordDescriptionModal.vue";
+
+import {
+  updateRecordDescription
+} from "../api/importApi";
 
 import {
   getFilteredRoutes,
@@ -17,8 +23,13 @@ import {
   getWrittenStations
 } from "../api/routesApi";
 
+import {
+  useAuth
+} from "../stores/auth";
+
 const routes = ref([]);
 const trains = ref([]);
+
 
 const EMPTY_SUMMARY = Object.freeze({
   fullSum: 0,
@@ -137,6 +148,23 @@ const stationOptions = ref([]);
 
 const notification = ref("");
 const notificationType = ref("success");
+const auth = useAuth();
+
+const editedTrain = ref(null);
+const editedTrainIndex = ref(-1);
+
+const isSendingDescription = ref(false);
+const descriptionError = ref("");
+
+const canEditDescriptions = computed(() => {
+  return auth.roles.value.some((role) => {
+    const normalizedRole = String(role)
+        .toLocaleLowerCase("ru");
+
+    return normalizedRole === "admin" ||
+        normalizedRole === "upload";
+  });
+});
 
 let notificationTimer = null;
 
@@ -573,12 +601,97 @@ async function openDetails(route) {
 }
 
 function closeDetails() {
+  closeDescriptionEditor();
+
   selectedRequestId.value += 1;
   selectedRoute.value = null;
   trains.value = [];
   trainsError.value = "";
   trainsLoading.value = false;
 }
+
+function openDescriptionEditor(train, index) {
+  if (
+      !canEditDescriptions.value ||
+      isSendingDescription.value
+  ) {
+    return;
+  }
+
+  editedTrain.value = train;
+  editedTrainIndex.value = index;
+  descriptionError.value = "";
+}
+
+function closeDescriptionEditor() {
+  if (isSendingDescription.value) {
+    return;
+  }
+
+  editedTrain.value = null;
+  editedTrainIndex.value = -1;
+  descriptionError.value = "";
+}
+
+async function saveTrainDescription(description) {
+  const train = editedTrain.value;
+  const trainIndex = editedTrainIndex.value;
+
+  if (
+      !train ||
+      trainIndex < 0 ||
+      isSendingDescription.value
+  ) {
+    return;
+  }
+
+  if (
+      train.id === undefined ||
+      train.id === null
+  ) {
+    descriptionError.value =
+        "Не удалось сохранить описание: отсутствует идентификатор поезда.";
+
+    return;
+  }
+
+  isSendingDescription.value = true;
+  descriptionError.value = "";
+
+  try {
+    await updateRecordDescription(
+        train.id,
+        train,
+        description
+    );
+
+    trains.value[trainIndex] = {
+      ...train,
+      description
+    };
+
+    editedTrain.value = trains.value[trainIndex];
+
+    showNotification(
+        "Описание поезда успешно сохранено."
+    );
+
+    closeDescriptionEditor();
+  } catch (exception) {
+    console.error(
+        "Ошибка сохранения описания поезда:",
+        exception
+    );
+
+    descriptionError.value =
+        exception instanceof Error
+            ? exception.message
+            : "Не удалось сохранить описание поезда.";
+  } finally {
+    isSendingDescription.value = false;
+  }
+}
+
 
 onMounted(async () => {
   await Promise.all([
@@ -1176,10 +1289,10 @@ const metricGroups = Object.freeze([
                 }}
               </td>
 
-              <td class="train-desc-cell">
-                {{
-                  train.description ?? "—"
-                }}
+              <td
+                  @dblclick="openDescriptionEditor(train, index)"
+              >
+                {{ train.description ?? "—" }}
               </td>
 
               <td class="train-row-in-file-column">
@@ -1208,4 +1321,16 @@ const metricGroups = Object.freeze([
         :selected-period="selectedPeriod"
         @apply="applyPeriod" />
   </main>
+
+  <RecordDescriptionModal
+      v-if="editedTrain"
+      :record="editedTrain"
+      :current-index="0"
+      :total-records="1"
+      :is-sending="isSendingDescription"
+      :error="descriptionError"
+      @close="closeDescriptionEditor"
+      @skip="closeDescriptionEditor"
+      @save="saveTrainDescription"
+  />
 </template>
