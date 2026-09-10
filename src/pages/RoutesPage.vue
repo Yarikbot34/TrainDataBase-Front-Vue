@@ -659,9 +659,14 @@ async function saveTrainDescription(description) {
   descriptionError.value = "";
 
   try {
+    const dto = {
+      ...train,
+      description
+    };
+
     await updateRecordDescription(
         train.id,
-        train,
+        dto,
         description
     );
 
