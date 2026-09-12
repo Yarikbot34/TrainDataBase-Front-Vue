@@ -71,6 +71,7 @@ const paymentState = computed(() => {
   return states.value.payment;
 });
 
+
 function unwrapArray(payload) {
   if (Array.isArray(payload)) {
     return payload;
@@ -91,6 +92,21 @@ function unwrapArray(payload) {
   }
 
   return [];
+}
+
+function periodDescription(column, row) {
+  if (!column.period) {
+    return undefined;
+  }
+
+  if (
+      row.periodDesc === null ||
+      row.periodDesc === undefined
+  ) {
+    return "";
+  }
+
+  return String(row.periodDesc);
 }
 
 function formatYear(year) {
@@ -460,11 +476,12 @@ function passengerCompactColumns() {
   return [
     {
       title: "Год",
+      period: "year",
       value: (row) => formatYear(row.year)
     },
-
     {
       title: "Месяц",
+      period: "month",
       value: (row) => formatMonth(row)
     },
 
@@ -502,11 +519,12 @@ function passengerFullColumns() {
   return [
     {
       title: "Год",
+      period: "year",
       value: (row) => formatYear(row.year)
     },
-
     {
       title: "Месяц",
+      period: "month",
       value: (row) => formatMonth(row)
     },
 
@@ -607,11 +625,12 @@ function paymentCompactColumns() {
   return [
     {
       title: "Год",
+      period: "year",
       value: (row) => formatYear(row.year)
     },
-
     {
       title: "Месяц",
+      period: "month",
       value: (row) => formatMonth(row)
     },
 
@@ -958,14 +977,11 @@ onBeforeUnmount(() => {
                                         `${row.year}-${row.month}-${index}`
                                     ">
                 <td
-                    v-for="
-                                            column in passengerColumns
-                                        "
+                    v-for="column in passengerColumns"
                     :key="column.title"
-                    :class="{
-                                            'numeric-cell':
-                                                column.numeric
-                                        }">
+                    :class="{'numeric-cell': column.numeric}"
+                    :title="periodDescription(column, row)"
+                >
                   {{ column.value(row) }}
                 </td>
               </tr>
@@ -1145,14 +1161,11 @@ onBeforeUnmount(() => {
                                         `${row.year}-${row.month}-${index}`
                                     ">
                 <td
-                    v-for="
-                                            column in paymentColumns
-                                        "
+                    v-for="column in paymentColumns"
                     :key="column.title"
-                    :class="{
-                                            'numeric-cell':
-                                                column.numeric
-                                        }">
+                    :class="{'numeric-cell': column.numeric}"
+                    :title="periodDescription(column, row)"
+                >
                   {{ column.value(row) }}
                 </td>
               </tr>
