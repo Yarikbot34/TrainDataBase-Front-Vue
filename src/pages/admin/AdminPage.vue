@@ -23,6 +23,12 @@ const adminSections = Object.freeze([
     title: "Просмотр транзакций",
     description:
         "Просмотр истории административных операций."
+  },
+  {
+    routeName: "admin-users",
+    title: "Управление пользователями",
+    description:
+        "Создание, редактирование и удаление пользователей."
   }
 ]);
 </script>
