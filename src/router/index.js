@@ -149,6 +149,14 @@ const router = createRouter({
                     meta: {
                         requiresRole: "Admin"
                     }
+                },
+                {
+                    path: "admin/users",
+                    name: "admin-users",
+                    component: () => import("../pages/admin/UsersPage.vue"),
+                    meta: {
+                        requiresAdmin: true
+                    }
                 }
             ]
         },
