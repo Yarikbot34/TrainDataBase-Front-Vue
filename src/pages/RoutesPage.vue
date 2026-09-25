@@ -20,7 +20,8 @@ import {
   getTrains,
   getWrittenNumbers,
   getWrittenPeriods,
-  getWrittenStations
+  getWrittenStations,
+  downloadRoutesXlsx
 } from "../api/routesApi";
 
 import {
@@ -39,6 +40,8 @@ const EMPTY_SUMMARY = Object.freeze({
   regBenefitSum: 0,
   another: 0
 });
+
+const downloadingXlsx = ref(false);
 
 function createEmptySummary() {
   return {
@@ -114,6 +117,38 @@ async function loadRoutes() {
   } finally {
     loading.value = false;
     closeDetails();
+  }
+}
+
+async function downloadRoutesFile() {
+  downloadingXlsx.value = true;
+
+  try {
+    const { blob, filename } = await downloadRoutesXlsx(
+        buildFilterRequest()
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (exception) {
+    console.error("Ошибка скачивания маршрутов:", exception);
+
+    showNotification(
+        exception instanceof Error
+            ? exception.message
+            : "Не удалось скачать файл.",
+        "error"
+    );
+  } finally {
+    downloadingXlsx.value = false;
   }
 }
 
@@ -902,6 +937,26 @@ const metricGroups = Object.freeze([
     }"
                 @click="resetFilters">
               Сбросить фильтры
+            </button>
+
+            <button
+                class="filters-download-button routes-download-button"
+                type="button"
+                title="Скачать данные в формате XLSX"
+                aria-label="Скачать данные в формате XLSX"
+                :disabled="downloadingXlsx"
+                @click="downloadRoutesFile"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                    d="M12 3v12m0 0 5-5m-5 5-5-5M5 17v3h14v-3"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                />
+              </svg>
             </button>
           </div>
 

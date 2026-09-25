@@ -24,6 +24,43 @@ const EMPTY_SUMMARY = Object.freeze({
     another: 0
 });
 
+const ROUTES_XLSX_URL = "/api/v1/file/download/routes";
+
+export async function downloadRoutesXlsx(filters) {
+    const response = await apiFetch(ROUTES_XLSX_URL, {
+        method: "POST",
+        headers: {
+            Accept:
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        },
+        body: JSON.stringify(filters)
+    });
+
+    if (!response.ok) {
+        await readJson(response);
+        throw new Error(`Сервер вернул ошибку ${response.status}`);
+    }
+
+    const disposition = response.headers.get("content-disposition") || "";
+    const encodedFilename = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+    const plainFilename = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+
+    let filename = "routes.xlsx";
+
+    try {
+        filename = encodedFilename
+            ? decodeURIComponent(encodedFilename)
+            : plainFilename || filename;
+    } catch {
+        filename = plainFilename || filename;
+    }
+
+    return {
+        blob: await response.blob(),
+        filename
+    };
+}
+
 function createEmptySummary() {
     return {
         ...EMPTY_SUMMARY

@@ -2456,6 +2456,58 @@ body.description-modal-open {
   }
 }
 
+.filters-download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  margin-left: auto;
+  padding: 16px 16px;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.filters-download-button:hover {
+  border-color: #6a9dd7;
+  color: #388fc5;
+  background: #fff5f4;
+}
+
+.filters-download-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.filters-download-button.is-active {
+  border-color: #6a9dd7;
+  color: #388fc5;
+  background: #fff5f4;
+}
+
+@media (max-width: 1200px) {
+  .filter-combobox {
+    flex: 1 1 200px;
+  }
+
+  .filter-combobox__button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filters-download-button {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
 .stats-state-cell {
   height: 320px;
   color: var(--text-secondary);
