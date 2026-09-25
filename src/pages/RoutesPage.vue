@@ -929,35 +929,38 @@ const metricGroups = Object.freeze([
                 placeholder="Поиск станции прибытия"
                 @change="loadRoutes" />
 
-            <button
-                class="filters-reset-button"
-                type="button"
-                :class="{
-      'is-active': hasActiveFilters
-    }"
-                @click="resetFilters">
-              Сбросить фильтры
-            </button>
 
-            <button
-                class="filters-download-button routes-download-button"
-                type="button"
-                title="Скачать данные в формате XLSX"
-                aria-label="Скачать данные в формате XLSX"
-                :disabled="downloadingXlsx"
-                @click="downloadRoutesFile"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                    d="M12 3v12m0 0 5-5m-5 5-5-5M5 17v3h14v-3"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                />
-              </svg>
-            </button>
+            <div class="filters-actions">
+              <button
+                  class="filters-reset-button"
+                  type="button"
+                  :class="{
+        'is-active': hasActiveFilters
+      }"
+                  @click="resetFilters">
+                Сбросить фильтры
+              </button>
+
+              <button
+                  class="filters-download-button routes-download-button"
+                  type="button"
+                  title="Скачать данные в формате XLSX"
+                  aria-label="Скачать данные в формате XLSX"
+                  :disabled="downloadingXlsx"
+                  @click="downloadRoutesFile"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                      d="M12 3v12m0 0 5-5m-5 5-5-5M5 17v3h14v-3"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="table-container">

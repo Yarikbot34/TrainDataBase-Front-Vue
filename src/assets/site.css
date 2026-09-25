@@ -2508,6 +2508,14 @@ body.description-modal-open {
   }
 }
 
+.filters-actions {
+  margin-left: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
 .stats-state-cell {
   height: 320px;
   color: var(--text-secondary);
