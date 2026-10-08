@@ -488,6 +488,7 @@ function passengerCompactColumns() {
     {
       title: "Общее кол-во",
       numeric: true,
+      color: "#1769e0",
       value: (row) =>
           formatNumber(row.sumPassengerCount)
     },
@@ -495,6 +496,7 @@ function passengerCompactColumns() {
     {
       title: "Без льгот",
       numeric: true,
+      color: "#22a06b",
       value: (row) =>
           formatNumber(row.casualCount)
     },
@@ -502,6 +504,7 @@ function passengerCompactColumns() {
     {
       title: "С льготами",
       numeric: true,
+      color: "#e58a1f",
       value: (row) =>
           formatNumber(row.sumBenefitCount)
     },
@@ -637,6 +640,7 @@ function paymentCompactColumns() {
     {
       title: "Общий доход",
       numeric: true,
+      color: "#1769e0",
       value: (row) =>
           formatNumber(row.summPayment)
     },
@@ -644,6 +648,7 @@ function paymentCompactColumns() {
     {
       title: "Доход без льгот",
       numeric: true,
+      color: "#22a06b",
       value: (row) =>
           formatNumber(row.casualPayment)
     },
@@ -651,6 +656,7 @@ function paymentCompactColumns() {
     {
       title: "Доход льготников",
       numeric: true,
+      color: "#e58a1f",
       value: (row) =>
           formatNumber(
               Number(row.summPayment ?? 0) -
@@ -966,6 +972,21 @@ onBeforeUnmount(() => {
                   {{ column.title }}
                 </th>
               </tr>
+
+              <tr
+                  v-if="passengerState.view === 'both'"
+                  class="stats-table__colors">
+                <th
+                    v-for="
+                                            column in passengerColumns
+                                        "
+                    :key="column.title"
+                    :style="
+                                            column.color
+                                                ? { background: column.color }
+                                                : undefined
+                                        "></th>
+              </tr>
               </thead>
 
               <tbody>
@@ -1149,6 +1170,21 @@ onBeforeUnmount(() => {
                     :key="column.title">
                   {{ column.title }}
                 </th>
+              </tr>
+
+              <tr
+                  v-if="paymentState.view === 'both'"
+                  class="stats-table__colors">
+                <th
+                    v-for="
+                                            column in paymentColumns
+                                        "
+                    :key="column.title"
+                    :style="
+                                            column.color
+                                                ? { background: column.color }
+                                                : undefined
+                                        "></th>
               </tr>
               </thead>
 

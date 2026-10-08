@@ -2218,6 +2218,11 @@ body.description-modal-open {
   font-weight: 650;
 }
 
+.stats-table thead tr.stats-table__colors th {
+  height: 4px;
+  padding: 0;
+}
+
 .stats-table tbody tr:nth-child(even) td {
   background: #f9fbfd;
 }
