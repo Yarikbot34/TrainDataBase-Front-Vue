@@ -228,6 +228,22 @@ function buildBaseChartOptions(rows, kind) {
       height: 350,
       fontFamily:
           'Inter, "Segoe UI", Arial, sans-serif',
+      animations: {
+        enabled: true,
+        // Прежние значения (800 / 150 / 350) уменьшены в 1,473 раза,
+        // чтобы суммарный каскад занимал ≈ 750 мс.
+        // Старт последней точки: 11 · 543 / (12 · 2,4) ≈ 207 мс,
+        // её завершение ≈ 750 мс.
+        speed: 543,
+        animateGradually: {
+          enabled: true,
+          delay: 102
+        },
+        dynamicAnimation: {
+          enabled: true,
+          speed: 238
+        }
+      },
       zoom: {
         enabled: false
       },
