@@ -844,6 +844,231 @@ button {
   min-width: 220px;
 }
 
+/* В обзорной таблице первые два столбца заняты периодом. */
+.trains-overview-table th:nth-child(9),
+.trains-overview-table td:nth-child(9) {
+  width: 145px;
+  min-width: 145px;
+}
+
+.trains-overview-table th,
+.trains-overview-table td {
+  padding: 5px 8px;
+}
+
+.trains-overview-table th:nth-child(1),
+.trains-overview-table td:nth-child(1) {
+  width: 65px;
+  min-width: 65px;
+}
+
+.trains-overview-table th:nth-child(2),
+.trains-overview-table td:nth-child(2) {
+  width: 60px;
+  min-width: 60px;
+}
+
+.trains-overview-table th:nth-child(4),
+.trains-overview-table td:nth-child(4) {
+  width: 320px;
+  min-width: 320px;
+}
+
+.trains-overview-table th:nth-child(6),
+.trains-overview-table td:nth-child(6) {
+  width: 105px;
+  min-width: 105px;
+}
+
+.trains-overview-table th:nth-child(11),
+.trains-overview-table td:nth-child(11) {
+  width: 360px;
+  min-width: 360px;
+  text-align: left;
+}
+
+/* Базовая ширина обзорной таблицы — 1500 px. */
+.trains-overview-container {
+  overflow-x: auto;
+}
+
+.trains-overview-table {
+  width: 1500px;
+  min-width: 1500px;
+  max-width: 1500px;
+  table-layout: fixed;
+}
+
+.trains-overview-table th,
+.trains-overview-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.trains-overview-table th:nth-child(1),
+.trains-overview-table td:nth-child(1) {
+  width: 60px;
+}
+
+.trains-overview-table th:nth-child(2),
+.trains-overview-table td:nth-child(2) {
+  width: 55px;
+}
+
+.trains-overview-table th:nth-child(3),
+.trains-overview-table td:nth-child(3) {
+  width: 90px;
+}
+
+.trains-overview-table th:nth-child(4),
+.trains-overview-table td:nth-child(4) {
+  width: 260px;
+  max-width: none;
+}
+
+.trains-overview-table th:nth-child(5),
+.trains-overview-table td:nth-child(5) {
+  width: 115px;
+}
+
+.trains-overview-table th:nth-child(6),
+.trains-overview-table td:nth-child(6) {
+  width: 90px;
+}
+
+.trains-overview-table th:nth-child(7),
+.trains-overview-table td:nth-child(7) {
+  width: 95px;
+}
+
+.trains-overview-table th:nth-child(8),
+.trains-overview-table td:nth-child(8) {
+  width: 120px;
+}
+
+.trains-overview-table th:nth-child(9),
+.trains-overview-table td:nth-child(9) {
+  width: 105px;
+}
+
+.trains-overview-table th:nth-child(10),
+.trains-overview-table td:nth-child(10) {
+  width: 120px;
+}
+
+.trains-overview-table td:nth-child(11) {
+  width: 350px;
+  text-align: left;
+}
+
+.trains-overview-table th:nth-child(11) {
+  width: 350px;
+  text-align: center;
+}
+
+/* Таблица полного списка поездов. Ширины подобраны под содержимое столбцов. */
+.table-card .big-trains-table-container {
+  overflow-x: auto;
+}
+
+.table-card .big-trains-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
+}
+
+.table-card .big-trains-table th,
+.table-card .big-trains-table td {
+  min-width: 0;
+  padding: 5px 8px;
+  overflow-wrap: anywhere;
+}
+
+.table-card .big-trains-table th:nth-child(1),
+.table-card .big-trains-table td:nth-child(1) {
+  width: 55px;
+  min-width: 55px;
+  max-width: 55px;
+}
+
+.table-card .big-trains-table th:nth-child(2),
+.table-card .big-trains-table td:nth-child(2) {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+}
+
+.table-card .big-trains-table th:nth-child(3),
+.table-card .big-trains-table td:nth-child(3) {
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+}
+
+.table-card .big-trains-table th:nth-child(4),
+.table-card .big-trains-table td:nth-child(4) {
+  width: 250px;
+  min-width: 250px;
+  max-width: 250px;
+}
+
+.table-card .big-trains-table th:nth-child(5),
+.table-card .big-trains-table td:nth-child(5) {
+  width: 115px;
+  min-width: 115px;
+  max-width: 115px;
+}
+
+.table-card .big-trains-table th:nth-child(6),
+.table-card .big-trains-table td:nth-child(6) {
+  width: 125px;
+  min-width: 125px;
+  max-width: 125px;
+}
+
+.table-card .big-trains-table th:nth-child(7),
+.table-card .big-trains-table td:nth-child(7) {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+}
+
+.table-card .big-trains-table th:nth-child(8),
+.table-card .big-trains-table td:nth-child(8) {
+  width: 115px;
+  min-width: 115px;
+  max-width: 115px;
+}
+
+.table-card .big-trains-table th:nth-child(9),
+.table-card .big-trains-table td:nth-child(9) {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+}
+
+.table-card .big-trains-table th:nth-child(10),
+.table-card .big-trains-table td:nth-child(10) {
+  width: 150px;
+  min-width: 150px;
+  max-width: 150px;
+}
+
+.table-card .big-trains-table th:nth-child(11),
+.table-card .big-trains-table td:nth-child(11) {
+  width: 300px;
+  min-width: 300px;
+  max-width: 300px;
+}
+
+.table-card .big-trains-table th {
+  text-align: center;
+}
+
+.table-card .big-trains-table td:nth-child(11) {
+  text-align: left;
+}
+
 .period-modal__caption {
   display: block;
   margin-bottom: 5px;

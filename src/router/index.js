@@ -51,6 +51,15 @@ const router = createRouter({
                     }
                 },
                 {
+                    path: "trains",
+                    name: "trains",
+                    component: () => {
+                        return import(
+                            "../pages/TrainsPage.vue"
+                            );
+                    }
+                },
+                {
                     path: "statistics",
                     name: "statistics",
                     component: () => {

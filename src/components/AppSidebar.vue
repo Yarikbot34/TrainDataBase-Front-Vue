@@ -32,6 +32,10 @@ function logout() {
         Маршруты
       </RouterLink>
 
+      <RouterLink to="/trains">
+        Поезда
+      </RouterLink>
+
       <RouterLink to="/statistics">
         Статистика
       </RouterLink>
