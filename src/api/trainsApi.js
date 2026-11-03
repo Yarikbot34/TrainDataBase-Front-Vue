@@ -3,7 +3,7 @@ import {
     readJson
 } from "./httpClient";
 
-const TRAINS_URL = "/api/v1/TableView/trains";
+const TRAINS_URL = "api/v1/TableView/trains";
 
 function unwrapResult(payload) {
     if (
@@ -25,10 +25,18 @@ export async function getTrains() {
     const payload = unwrapResult(await readJson(response));
 
     if (Array.isArray(payload)) {
-        return payload;
+        return {
+            trains: payload,
+            totals: null
+        };
     }
 
-    return Array.isArray(payload?.trains)
-        ? payload.trains
-        : [];
+    return {
+        trains: Array.isArray(payload?.trains)
+            ? payload.trains
+            : [],
+        totals: payload && typeof payload === "object"
+            ? payload
+            : null
+    };
 }

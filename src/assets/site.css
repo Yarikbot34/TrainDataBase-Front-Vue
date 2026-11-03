@@ -1431,8 +1431,12 @@ button {
   }
 
   .breadcrumbs,
-  .page-header p {
+  .page-header p:not(.page-record-count) {
     display: none;
+  }
+
+  .page-record-count {
+    display: block;
   }
 
   .refresh-button {

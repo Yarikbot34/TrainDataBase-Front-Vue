@@ -811,9 +811,8 @@ const metricGroups = Object.freeze([
 
         <h1>Просмотр маршрутов</h1>
 
-        <p>
-          Сводные данные по перевозкам пассажиров
-          и доходам
+        <p class="page-record-count">
+          {{ loading ? "Загрузка данных…" : `Записей: ${filteredRoutes.length}` }}
         </p>
       </div>
 
@@ -841,36 +840,7 @@ const metricGroups = Object.freeze([
         :class="{ 'is-split': selectedRoute }">
       <div class="workspace__main">
         <div class="table-card">
-          <div
-              class="table-card__toolbar routes-toolbar">
-            <div>
-              <h2>Маршруты</h2>
-
-              <p>
-                {{
-                  loading
-                      ? "Загрузка данных…"
-                      : `Записей: ${filteredRoutes.length}`
-                }}
-              </p>
-            </div>
-
-            <label class="search-field">
-              <svg
-                  viewBox="0 0 24 24"
-                  aria-hidden="true">
-                <path
-                    d="m21 19.6-4.7-4.7a7 7 0 1 0-1.4 1.4l4.7 4.7 1.4-1.4ZM5 10a5 5 0 1 1 10 0A5 5 0 0 1 5 10Z" />
-              </svg>
-
-              <input
-                  v-model="searchQuery"
-                  type="search"
-                  placeholder="Поиск по номеру маршрута" />
-            </label>
-          </div>
-
-          <div class="filters-bar routes-filters">
+          <div class="table-card__toolbar routes-toolbar routes-filters">
             <div class="filter-combobox period-filter">
     <span class="filter-combobox__label">
       Период
@@ -929,6 +899,19 @@ const metricGroups = Object.freeze([
                 placeholder="Поиск станции прибытия"
                 @change="loadRoutes" />
 
+            <label class="search-field">
+              <svg
+                  viewBox="0 0 24 24"
+                  aria-hidden="true">
+                <path
+                    d="m21 19.6-4.7-4.7a7 7 0 1 0-1.4 1.4l4.7 4.7 1.4-1.4ZM5 10a5 5 0 1 1 10 0A5 5 0 0 1 5 10Z" />
+              </svg>
+
+              <input
+                  v-model="searchQuery"
+                  type="search"
+                  placeholder="Поиск по номеру маршрута" />
+            </label>
 
             <div class="filters-actions">
               <button

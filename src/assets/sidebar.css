@@ -35,6 +35,7 @@
 }
 
 .sidebar__navigation {
+    position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -43,8 +44,23 @@
     padding: 22px 0;
 }
 
+.sidebar__active-indicator {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0;
+    left: 0;
+    pointer-events: none;
+    background: var(--accent);
+    transition:
+        transform 260ms ease,
+        height 160ms ease,
+        opacity 160ms ease;
+}
+
 .sidebar__navigation a {
     position: relative;
+    z-index: 1;
     display: flex;
     min-height: 46px;
     align-items: center;
@@ -65,7 +81,7 @@
 
 .sidebar__navigation a.router-link-active {
     color: #ffffff;
-    background: var(--accent);
+    background: transparent;
     box-shadow: none;
 }
 

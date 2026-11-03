@@ -9,6 +9,7 @@ import {
 } from "../api/trainsApi";
 
 const trains = ref([]);
+const totals = ref(null);
 const loading = ref(false);
 const error = ref("");
 
@@ -64,13 +65,16 @@ async function loadTrains() {
     error.value = "";
 
     try {
-        trains.value = await getTrains();
+        const result = await getTrains();
+        trains.value = result.trains;
+        totals.value = result.totals;
     } catch (exception) {
         console.error("Ошибка загрузки поездов:", exception);
         error.value = exception instanceof Error
             ? exception.message
             : "Не удалось загрузить поезда.";
         trains.value = [];
+        totals.value = null;
     } finally {
         loading.value = false;
     }
@@ -95,7 +99,9 @@ onMounted(loadTrains);
 
         <h1>Просмотр поездов</h1>
 
-        <p>Список поездов и их основные эксплуатационные показатели</p>
+        <p class="page-record-count">
+          {{ loading ? "Загрузка данных…" : `Записей: ${trains.length}` }}
+        </p>
       </div>
 
       <button
@@ -116,10 +122,6 @@ onMounted(loadTrains);
       <div class="workspace__main">
         <div class="table-card">
           <div class="table-card__toolbar">
-            <div>
-              <h2>Поезда</h2>
-              <p>{{ loading ? "Загрузка данных…" : `Записей: ${trains.length}` }}</p>
-            </div>
           </div>
 
           <div class="table-container big-trains-table-container">
@@ -140,7 +142,12 @@ onMounted(loadTrains);
               </tr>
               <tr class="full-sum-header trains-total-row">
                 <th colspan="5">Итого</th>
-                <th v-for="column in 6" :key="column">—</th>
+                <th class="numeric-cell">{{ formatDecimal(totals?.distance) }}</th>
+                <th class="numeric-cell">{{ formatDecimal(totals?.railCarCount) }}</th>
+                <th class="numeric-cell">{{ formatDecimal(totals?.rangePerDay) }}</th>
+                <th class="numeric-cell">{{ formatDecimal(totals?.dayInRaise) }}</th>
+                <th class="numeric-cell">{{ formatDecimal(totals?.rangePerMounth) }}</th>
+                <th>—</th>
               </tr>
               </thead>
 
