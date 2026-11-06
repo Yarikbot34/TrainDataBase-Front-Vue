@@ -15,6 +15,11 @@ const props = defineProps({
   selectedPeriod: {
     type: Array,
     default: () => []
+  },
+
+  caption: {
+    type: String,
+    default: "Фильтр маршрутов"
   }
 });
 
@@ -316,7 +321,7 @@ watch(
         <header class="period-modal__header">
           <div>
                         <span class="period-modal__caption">
-                            Фильтр маршрутов
+                            {{ caption }}
                         </span>
 
             <h2 id="period-modal-title">

@@ -2501,6 +2501,26 @@ button {
   font-weight: 600;
 }
 
+.filter-combobox-v2__checkbox {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 7px;
+  border: 1px solid #b7c1d0;
+  border-radius: 4px;
+  color: transparent;
+  font-size: 11px;
+  vertical-align: -3px;
+}
+
+.filter-combobox-v2__checkbox.is-checked {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
 .filter-combobox__empty {
   padding: 12px;
   color: var(--text-secondary);

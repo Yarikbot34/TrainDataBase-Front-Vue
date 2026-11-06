@@ -3,7 +3,8 @@ import {
     readJson
 } from "./httpClient";
 
-const TRAINS_URL = "api/v1/TableView/trains";
+const TRAINS_URL = "/api/v1/TableView/trains";
+const TRAINS_FILTER_URL = "/api/v1/TableView/trains/filter";
 
 function unwrapResult(payload) {
     if (
@@ -18,8 +19,9 @@ function unwrapResult(payload) {
     return payload;
 }
 
-export async function getTrains() {
-    const response = await apiFetch(TRAINS_URL, {
+async function getTrainsData(url, options = {}) {
+    const response = await apiFetch(url, {
+        ...options,
         cache: "no-store"
     });
     const payload = unwrapResult(await readJson(response));
@@ -39,4 +41,15 @@ export async function getTrains() {
             ? payload
             : null
     };
+}
+
+export async function getTrains() {
+    return await getTrainsData(TRAINS_URL);
+}
+
+export async function getFilteredTrains(filters) {
+    return await getTrainsData(TRAINS_FILTER_URL, {
+        method: "POST",
+        body: JSON.stringify(filters)
+    });
 }

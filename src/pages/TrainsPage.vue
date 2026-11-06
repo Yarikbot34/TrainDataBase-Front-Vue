@@ -1,19 +1,54 @@
 <script setup>
 import {
+    computed,
     onMounted,
     ref
 } from "vue";
 
+import FilterComboboxV2 from "../components/FilterComboboxV2.vue";
+import PeriodModal from "../components/PeriodModal.vue";
+
 import {
+    getFilteredTrains,
     getTrains
 } from "../api/trainsApi";
+
+import {
+    getWrittenNumbers,
+    getWrittenPeriods,
+    getWrittenStations
+} from "../api/routesApi";
 
 const trains = ref([]);
 const totals = ref(null);
 const loading = ref(false);
 const error = ref("");
+const showPeriodModal = ref(false);
+const availablePeriods = ref([]);
+const selectedPeriod = ref([]);
+const selectedNumbers = ref([]);
+const selectedStationsFrom = ref([]);
+const selectedStationsTo = ref([]);
+const numberOptions = ref([]);
+const stationOptions = ref([]);
 
 const columnsCount = 11;
+
+const hasActiveFilters = computed(() => {
+    return selectedPeriod.value.length > 0 ||
+        selectedNumbers.value.length > 0 ||
+        selectedStationsFrom.value.length > 0 ||
+        selectedStationsTo.value.length > 0;
+});
+
+const periodButtonText = computed(() => {
+    if (!selectedPeriod.value.length) return "Весь период";
+    const count = selectedPeriod.value.reduce(
+        (total, item) => total + (item.months?.length ?? 0),
+        0
+    );
+    return `Выбрано месяцев: ${count}`;
+});
 
 function formatInteger(value) {
     if (value === null || value === undefined || value === "") {
@@ -65,7 +100,9 @@ async function loadTrains() {
     error.value = "";
 
     try {
-        const result = await getTrains();
+        const result = hasActiveFilters.value
+            ? await getFilteredTrains(buildFilterRequest())
+            : await getTrains();
         trains.value = result.trains;
         totals.value = result.totals;
     } catch (exception) {
@@ -80,11 +117,91 @@ async function loadTrains() {
     }
 }
 
+function extractItems(payload) {
+    if (Array.isArray(payload)) return payload;
+
+    for (const collection of [
+        payload?.result,
+        payload?.data,
+        payload?.items,
+        payload?.content,
+        payload?.periods,
+        payload?.years
+    ]) {
+        if (Array.isArray(collection)) return collection;
+    }
+
+    return [];
+}
+
+function normalizePeriods(payload) {
+    return extractItems(payload)
+        .map((item) => {
+            if (typeof item === "number" || typeof item === "string") {
+                return { year: Number(item), months: Array.from({ length: 12 }, (_, index) => index + 1) };
+            }
+
+            return {
+                year: Number(item?.year ?? item?.value ?? item?.period),
+                months: Array.isArray(item?.months)
+                    ? item.months.map(Number)
+                    : Array.from({ length: 12 }, (_, index) => index + 1)
+            };
+        })
+        .filter((item) => Number.isFinite(item.year));
+}
+
+function buildFilterRequest() {
+    return {
+        period: selectedPeriod.value.map((item) => ({
+            year: Number(item.year),
+            months: [...item.months].map(Number)
+        })),
+        numbers: selectedNumbers.value.map(String),
+        stationsFrom: selectedStationsFrom.value.map(String),
+        stationsTo: selectedStationsTo.value.map(String)
+    };
+}
+
+function applyPeriod(period) {
+    selectedPeriod.value = period;
+    loadTrains();
+}
+
+function resetFilters() {
+    selectedPeriod.value = [];
+    selectedNumbers.value = [];
+    selectedStationsFrom.value = [];
+    selectedStationsTo.value = [];
+    loadTrains();
+}
+
+async function loadFilterOptions() {
+    try {
+        const [numbers, stations, periods] = await Promise.all([
+            getWrittenNumbers(),
+            getWrittenStations(),
+            getWrittenPeriods()
+        ]);
+
+        numberOptions.value = extractItems(numbers);
+        stationOptions.value = extractItems(stations);
+        availablePeriods.value = normalizePeriods(periods);
+    } catch (exception) {
+        console.error("Ошибка загрузки фильтров поездов:", exception);
+        numberOptions.value = [];
+        stationOptions.value = [];
+        availablePeriods.value = [];
+    }
+}
+
 function openRoutePlaceholder() {
     // Связанный маршрут будет подключён на следующем этапе.
 }
 
-onMounted(loadTrains);
+onMounted(async () => {
+    await Promise.all([loadFilterOptions(), loadTrains()]);
+});
 </script>
 
 <template>
@@ -121,8 +238,42 @@ onMounted(loadTrains);
     <section class="workspace">
       <div class="workspace__main">
         <div class="table-card">
-          <div class="table-card__toolbar">
-          </div>
+           <div class="table-card__toolbar routes-toolbar routes-filters trains-filters">
+             <div class="filter-combobox period-filter">
+               <span class="filter-combobox__label">Период</span>
+               <button class="filter-combobox__button period-filter__button" type="button" @click="showPeriodModal = true">
+                 <span class="filter-combobox__value">{{ periodButtonText }}</span>
+                 <svg class="filter-combobox__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5-1.4-1.4L12 11.2 8.4 7.6 7 9Z" /></svg>
+               </button>
+             </div>
+
+             <FilterComboboxV2
+                 v-model="selectedNumbers"
+                 :options="numberOptions"
+                 label="№ поезда"
+                 all-text="Все поезда"
+                 @change="loadTrains" />
+
+             <FilterComboboxV2
+                 v-model="selectedStationsFrom"
+                 :options="stationOptions"
+                 label="Станция отправления"
+                 all-text="Все станции"
+                 @change="loadTrains" />
+
+             <FilterComboboxV2
+                 v-model="selectedStationsTo"
+                 :options="stationOptions"
+                 label="Станция прибытия"
+                 all-text="Все станции"
+                 @change="loadTrains" />
+
+             <div class="filters-actions">
+               <button class="filters-reset-button" type="button" :class="{ 'is-active': hasActiveFilters }" @click="resetFilters">
+                 Сбросить фильтры
+               </button>
+             </div>
+           </div>
 
           <div class="table-container big-trains-table-container">
             <table class="trains-table big-trains-table">
@@ -214,5 +365,12 @@ onMounted(loadTrains);
         </div>
       </div>
     </section>
+
+    <PeriodModal
+        v-model="showPeriodModal"
+        :periods="availablePeriods"
+        :selected-period="selectedPeriod"
+        caption="Фильтр поездов"
+        @apply="applyPeriod" />
   </main>
 </template>
