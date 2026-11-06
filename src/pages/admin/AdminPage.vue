@@ -29,6 +29,12 @@ const adminSections = Object.freeze([
     title: "Управление пользователями",
     description:
         "Создание, редактирование и удаление пользователей."
+  },
+  {
+    routeName: "map-editor",
+    title: "Редактор схем",
+    description:
+        "Редактирование схемы карты."
   }
 ]);
 </script>
