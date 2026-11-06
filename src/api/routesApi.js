@@ -12,6 +12,9 @@ const ROUTES_FILTER_URL =
 const TRAINS_URL =
     "/api/v1/TableView/trains";
 
+const TRAIN_ROUTE_URL =
+    "/api/v1/TableView/routes";
+
 const CONTENT_URL =
     "/api/v1/content";
 
@@ -199,6 +202,20 @@ export async function getTrains(
         `${encodeURIComponent(year)}/` +
         `${encodeURIComponent(month)}/` +
         `${encodeURIComponent(routeNumber)}`;
+
+    return await getJson(url);
+}
+
+export async function getTrainRoute(
+    year,
+    month,
+    trainNumber
+) {
+    const url =
+        `${TRAIN_ROUTE_URL}/` +
+        `${encodeURIComponent(year)}/` +
+        `${encodeURIComponent(month)}/` +
+        `${encodeURIComponent(trainNumber)}`;
 
     return await getJson(url);
 }

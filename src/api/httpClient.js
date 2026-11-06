@@ -115,9 +115,11 @@ export async function readJson(response) {
     }
 
     if (!response.ok) {
-        throw new Error(
+        const error = new Error(
             getServerErrorMessage(body, response.status)
         );
+        error.status = response.status;
+        throw error;
     }
 
     return body;

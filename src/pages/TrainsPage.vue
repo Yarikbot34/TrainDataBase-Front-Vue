@@ -16,7 +16,8 @@ import {
 import {
     getWrittenNumbers,
     getWrittenPeriods,
-    getWrittenStations
+    getWrittenStations,
+    getTrainRoute
 } from "../api/routesApi";
 
 const trains = ref([]);
@@ -31,6 +32,10 @@ const selectedStationsFrom = ref([]);
 const selectedStationsTo = ref([]);
 const numberOptions = ref([]);
 const stationOptions = ref([]);
+const selectedRoute = ref(null);
+const routeLoading = ref(false);
+const routeError = ref("");
+const selectedRouteRequestId = ref(0);
 
 const columnsCount = 11;
 
@@ -195,8 +200,44 @@ async function loadFilterOptions() {
     }
 }
 
-function openRoutePlaceholder() {
-    // Связанный маршрут будет подключён на следующем этапе.
+async function openRoute(train) {
+    selectedRoute.value = null;
+    routeError.value = "";
+
+    const requestId = ++selectedRouteRequestId.value;
+    routeLoading.value = true;
+
+    try {
+        const route = await getTrainRoute(
+            train.year,
+            train.month,
+            train.number
+        );
+
+        if (requestId === selectedRouteRequestId.value) {
+            selectedRoute.value = route;
+        }
+    } catch (exception) {
+        if (requestId !== selectedRouteRequestId.value) return;
+
+        console.error("Ошибка загрузки связанного маршрута:", exception);
+        routeError.value = exception?.status === 404
+            ? "Связанный маршрут не найден."
+            : exception instanceof Error
+                ? exception.message
+                : "Не удалось загрузить связанный маршрут.";
+    } finally {
+        if (requestId === selectedRouteRequestId.value) {
+            routeLoading.value = false;
+        }
+    }
+}
+
+function closeRoute() {
+    selectedRouteRequestId.value += 1;
+    selectedRoute.value = null;
+    routeError.value = "";
+    routeLoading.value = false;
 }
 
 onMounted(async () => {
@@ -205,7 +246,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="routes-page">
+  <main class="routes-page trains-page">
     <header class="page-header">
       <div>
         <div class="breadcrumbs">
@@ -235,7 +276,7 @@ onMounted(async () => {
       </button>
     </header>
 
-    <section class="workspace">
+    <section class="workspace" :class="{ 'is-split': routeLoading || selectedRoute || routeError }">
       <div class="workspace__main">
         <div class="table-card">
            <div class="table-card__toolbar routes-toolbar routes-filters trains-filters">
@@ -340,7 +381,7 @@ onMounted(async () => {
                         class="route-link"
                         type="button"
                         title="Открыть связанный маршрут"
-                        @click="openRoutePlaceholder">
+                         @click="openRoute(train)">
                       {{ train.number ?? "—" }}
                     </button>
                   </td>
@@ -362,9 +403,60 @@ onMounted(async () => {
             <span class="table-information__accent"></span>
             <span>Для просмотра связанного маршрута нажмите на номер поезда.</span>
           </div>
-        </div>
-      </div>
-    </section>
+           </div>
+         </div>
+
+         <aside v-if="routeLoading || selectedRoute || routeError" class="workspace__details">
+           <div class="details-panel__header details-panel__header--compact">
+             <span class="details-panel__caption">Связанный маршрут</span>
+             <button
+                 class="icon-button"
+                 type="button"
+                 aria-label="Закрыть"
+                 @click="closeRoute">
+               ×
+             </button>
+           </div>
+
+           <div class="trains-table-container">
+             <table class="routes-table routes-table-small">
+               <thead>
+               <tr>
+                 <th>Год</th>
+                 <th>Месяц</th>
+                 <th>№ маршрута</th>
+                 <th>Количество пассажиров, чел.</th>
+                 <th>Средняя дальность поездки, км</th>
+                 <th>Доходы от перевозки пассажиров, руб.</th>
+                 <th>Доходы от субъектов, руб.</th>
+               </tr>
+               </thead>
+               <tbody>
+               <tr v-if="routeLoading">
+                 <td class="trains-state-cell" colspan="7">
+                   <div class="loading-state">
+                     <span class="spinner"></span>
+                     Загрузка данных…
+                   </div>
+                 </td>
+               </tr>
+               <tr v-else-if="routeError">
+                 <td class="trains-state-cell" colspan="7">{{ routeError }}</td>
+               </tr>
+               <tr v-else>
+                 <td>{{ selectedRoute?.year ?? "—" }}</td>
+                 <td>{{ selectedRoute?.month ?? "—" }}</td>
+                 <td>{{ selectedRoute?.routeNumber ?? "—" }}</td>
+                 <td class="numeric-cell">{{ formatInteger(selectedRoute?.summary?.count) }}</td>
+                 <td class="numeric-cell">{{ formatDecimal(selectedRoute?.summary?.wayLength) }}</td>
+                 <td class="numeric-cell">{{ formatInteger(selectedRoute?.summary?.payment) }}</td>
+                 <td class="numeric-cell">{{ formatInteger(selectedRoute?.summary?.paymentBySubject) }}</td>
+               </tr>
+               </tbody>
+             </table>
+           </div>
+         </aside>
+       </section>
 
     <PeriodModal
         v-model="showPeriodModal"
