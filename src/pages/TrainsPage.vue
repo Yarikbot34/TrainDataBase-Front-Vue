@@ -7,6 +7,7 @@ import {
 
 import FilterComboboxV2 from "../components/FilterComboboxV2.vue";
 import PeriodModal from "../components/PeriodModal.vue";
+import { useColumnSort } from "../composables/useColumnSort";
 
 import {
     getFilteredTrains,
@@ -38,6 +39,63 @@ const routeError = ref("");
 const selectedRouteRequestId = ref(0);
 
 const columnsCount = 11;
+
+const {
+    sortKey,
+    sortDirection,
+    toggleSort,
+    headerSortClass,
+    headerAriaSort,
+    sortIndicator
+} = useColumnSort();
+
+const textSortColumns = new Set([
+    "number",
+    "route",
+    "time"
+]);
+
+const sortColumnValueById = {
+    year: (train) => Number(train.year ?? 0),
+    month: (train) => Number(train.month ?? 0),
+    number: (train) => train.number ?? "",
+    route: (train) => formatStations(train),
+    time: (train) => formatTrainTimes(train),
+    distance: (train) => Number(train.distance ?? 0),
+    railcarCount: (train) => Number(train.railcarCount ?? 0),
+    rangePerDay: (train) => Number(train.rangePerDay ?? 0),
+    dayInRaise: (train) => Number(train.dayInRaise ?? 0),
+    rangePerMonth: (train) => Number(train.rangePerMonth ?? 0)
+};
+
+const sortedTrains = computed(() => {
+    if (!sortKey.value || !sortDirection.value) {
+        return trains.value;
+    }
+
+    const multiplier = sortDirection.value === "asc" ? 1 : -1;
+    const getValue = sortColumnValueById[sortKey.value];
+    const useTextCompare = textSortColumns.has(sortKey.value);
+
+    return [...trains.value].sort((first, second) => {
+        const firstValue = getValue(first);
+        const secondValue = getValue(second);
+
+        if (useTextCompare) {
+            return String(firstValue ?? "").localeCompare(
+                String(secondValue ?? ""),
+                "ru",
+                { numeric: true, sensitivity: "base" }
+            ) * multiplier;
+        }
+
+        const difference =
+            Number(firstValue ?? 0) -
+            Number(secondValue ?? 0);
+
+        return difference * multiplier;
+    });
+});
 
 const hasActiveFilters = computed(() => {
     return selectedPeriod.value.length > 0 ||
@@ -320,16 +378,86 @@ onMounted(async () => {
             <table class="trains-table big-trains-table">
               <thead>
               <tr>
-                <th>Год</th>
-                <th>Месяц</th>
-                <th>№ поезда</th>
-                <th>Маршрут</th>
-                <th>Время отправления-прибытия</th>
-                <th>Расстояние между станциями, км</th>
-                <th>Количество вагонов, ед.</th>
-                <th>Вагоно-километры в сутки</th>
-                <th>Дней курсирования</th>
-                <th>Вагоно-километры в месяц</th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('year')"
+                    :aria-sort="headerAriaSort('year')"
+                    @click="toggleSort('year')">
+                  Год
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('year') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('month')"
+                    :aria-sort="headerAriaSort('month')"
+                    @click="toggleSort('month')">
+                  Месяц
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('month') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('number')"
+                    :aria-sort="headerAriaSort('number')"
+                    @click="toggleSort('number')">
+                  № поезда
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('number') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('route')"
+                    :aria-sort="headerAriaSort('route')"
+                    @click="toggleSort('route')">
+                  Маршрут
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('route') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('time')"
+                    :aria-sort="headerAriaSort('time')"
+                    @click="toggleSort('time')">
+                  Время отправления-прибытия
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('time') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('distance')"
+                    :aria-sort="headerAriaSort('distance')"
+                    @click="toggleSort('distance')">
+                  Расстояние между станциями, км
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('distance') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('railcarCount')"
+                    :aria-sort="headerAriaSort('railcarCount')"
+                    @click="toggleSort('railcarCount')">
+                  Количество вагонов, ед.
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('railcarCount') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('rangePerDay')"
+                    :aria-sort="headerAriaSort('rangePerDay')"
+                    @click="toggleSort('rangePerDay')">
+                  Вагоно-километры в сутки
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('rangePerDay') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('dayInRaise')"
+                    :aria-sort="headerAriaSort('dayInRaise')"
+                    @click="toggleSort('dayInRaise')">
+                  Дней курсирования
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('dayInRaise') }}</span>
+                </th>
+                <th
+                    class="is-sortable"
+                    :class="headerSortClass('rangePerMonth')"
+                    :aria-sort="headerAriaSort('rangePerMonth')"
+                    @click="toggleSort('rangePerMonth')">
+                  Вагоно-километры в месяц
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('rangePerMonth') }}</span>
+                </th>
                 <th>Доп. данные</th>
               </tr>
               <tr class="full-sum-header trains-total-row">
@@ -371,7 +499,7 @@ onMounted(async () => {
 
               <template v-else>
                 <tr
-                    v-for="(train, index) in trains"
+                    v-for="(train, index) in sortedTrains"
                     :key="train.id ?? index"
                     :title="`Строка в файле: ${train.rowInFile ?? '—'}`">
                   <td>{{ train.year ?? "—" }}</td>

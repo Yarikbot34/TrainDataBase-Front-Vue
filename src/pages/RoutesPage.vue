@@ -13,6 +13,7 @@ import RecordDescriptionModal from
 import {
   updateRecordDescription
 } from "../api/importApi";
+import { useColumnSort } from "../composables/useColumnSort";
 
 import {
   getFilteredRoutes,
@@ -218,23 +219,105 @@ const monthOptions = Object.freeze([
   { value: 12, label: "Декабрь" }
 ]);
 
+const {
+  sortKey,
+  sortDirection,
+  toggleSort,
+  headerSortClass,
+  headerAriaSort,
+  sortIndicator
+} = useColumnSort();
+
+function metricSortKey(metricKey, categoryKey) {
+  return `${metricKey}__${categoryKey}`;
+}
+
+function getSortValue(route, columnKey) {
+  if (columnKey === "year") {
+    return toNumber(route.year);
+  }
+
+  if (columnKey === "month") {
+    return toNumber(route.month);
+  }
+
+  if (columnKey === "routeNumber") {
+    return route.routeNumber ??
+        route.number ??
+        "";
+  }
+
+  const separatorIndex =
+      columnKey.indexOf("__");
+
+  if (separatorIndex !== -1) {
+    const metricKey =
+        columnKey.slice(0, separatorIndex);
+
+    const categoryKey =
+        columnKey.slice(separatorIndex + 2);
+
+    return getRouteMetric(
+        route,
+        categoryKey,
+        metricKey
+    );
+  }
+
+  return 0;
+}
+
+function compareSortValues(
+    firstValue,
+    secondValue
+) {
+  if (sortKey.value === "routeNumber") {
+    return String(firstValue ?? "")
+        .localeCompare(
+            String(secondValue ?? ""),
+            "ru",
+            {
+              numeric: true,
+              sensitivity: "base"
+            }
+        );
+  }
+
+  return Number(firstValue ?? 0) -
+      Number(secondValue ?? 0);
+}
+
 const filteredRoutes = computed(() => {
   const query = searchQuery.value
       .trim()
       .toLocaleLowerCase("ru");
 
-  if (!query) {
-    return routes.value;
+  let result = routes.value;
+
+  if (query) {
+    result = routes.value.filter((route) => {
+      const routeNumber = String(
+          route.routeNumber ??
+          route.number ??
+          ""
+      ).toLocaleLowerCase("ru");
+
+      return routeNumber.includes(query);
+    });
   }
 
-  return routes.value.filter((route) => {
-    const routeNumber = String(
-        route.routeNumber ??
-        route.number ??
-        ""
-    ).toLocaleLowerCase("ru");
+  if (!sortKey.value || !sortDirection.value) {
+    return result;
+  }
 
-    return routeNumber.includes(query);
+  const multiplier =
+      sortDirection.value === "asc" ? 1 : -1;
+
+  return [...result].sort((first, second) => {
+    return compareSortValues(
+        getSortValue(first, sortKey.value),
+        getSortValue(second, sortKey.value)
+    ) * multiplier;
   });
 });
 
@@ -952,20 +1035,32 @@ const metricGroups = Object.freeze([
               <tr class="group-header">
                 <th
                     class="sticky-column sticky-column--year"
-                    rowspan="3">
+                    :class="headerSortClass('year')"
+                    :aria-sort="headerAriaSort('year')"
+                    rowspan="3"
+                    @click="toggleSort('year')">
                   Год
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('year') }}</span>
                 </th>
 
                 <th
                     class="sticky-column sticky-column--month"
-                    rowspan="3">
+                    :class="headerSortClass('month')"
+                    :aria-sort="headerAriaSort('month')"
+                    rowspan="3"
+                    @click="toggleSort('month')">
                   Месяц
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('month') }}</span>
                 </th>
 
                 <th
                     class="sticky-column sticky-column--route"
-                    rowspan="3">
+                    :class="headerSortClass('routeNumber')"
+                    :aria-sort="headerAriaSort('routeNumber')"
+                    rowspan="3"
+                    @click="toggleSort('routeNumber')">
                   № поезда
+                  <span class="sort-indicator" aria-hidden="true">{{ sortIndicator('routeNumber') }}</span>
                 </th>
 
                 <th
@@ -1000,10 +1095,44 @@ const metricGroups = Object.freeze([
                       v-for="category in categories"
                       :key="
             `${metric.key}-${category.key}`
-          ">
-          <span>
-            {{ category.label }}
-          </span>
+          "
+                      :class="
+              headerSortClass(
+                  metricSortKey(
+                      metric.key,
+                      category.key
+                  )
+              )
+            "
+                      :aria-sort="
+              headerAriaSort(
+                  metricSortKey(
+                      metric.key,
+                      category.key
+                  )
+              )
+            "
+                      @click="
+              toggleSort(
+                  metricSortKey(
+                      metric.key,
+                      category.key
+                  )
+              )
+            ">
+                    <span>
+                      {{ category.label }}
+                    </span>
+                    <span class="sort-indicator" aria-hidden="true">
+                      {{
+                        sortIndicator(
+                            metricSortKey(
+                                metric.key,
+                                category.key
+                            )
+                        )
+                      }}
+                    </span>
                   </th>
                 </template>
               </tr>
